@@ -11,11 +11,13 @@ export default function App() {
     status,
     sessions,
     availableModels,
+    memories,
     sendMessage,
     changeModel,
     newSession,
     loadSession,
     stopGeneration,
+    forgetMemory,
   } = useAgent();
 
   return (
@@ -39,7 +41,9 @@ export default function App() {
         <Sidebar
           sessions={sessions}
           currentSessionId={status.sessionId}
+          memories={memories}
           onLoad={loadSession}
+          onForget={forgetMemory}
         />
 
         <main

@@ -40,6 +40,7 @@ export function useAgent() {
   });
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [memories, setMemories] = useState<MemoryEntry[]>([]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,6 +55,7 @@ export function useAgent() {
       setStatus(s => ({ ...s, connected: true }));
       fetchStatus();
       fetchSessions();
+      fetchMemories();
     };
 
     ws.onclose = () => {
@@ -180,6 +182,7 @@ export function useAgent() {
       case "done":
         setStatus(s => ({ ...s, thinking: false }));
         fetchSessions();
+        fetchMemories();
         break;
 
       case "error":
@@ -228,6 +231,20 @@ export function useAgent() {
     } catch {}
   }, []);
 
+  const fetchMemories = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/api/memories`);
+      setMemories(await r.json());
+    } catch {}
+  }, []);
+
+  const forgetMemory = useCallback(async (key: string) => {
+    try {
+      await fetch(`${API_BASE}/api/memories/${encodeURIComponent(key)}`, { method: "DELETE" });
+      setMemories(prev => prev.filter(m => m.key !== key));
+    } catch {}
+  }, []);
+
   const sendMessage = useCallback((content: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     setMessages(prev => [...prev, { id: uid(), role: "user", content }]);
@@ -273,12 +290,21 @@ export function useAgent() {
     status,
     sessions,
     availableModels,
+    memories,
     sendMessage,
     changeModel,
     newSession,
     loadSession,
     stopGeneration,
+    forgetMemory,
   };
+}
+
+export interface MemoryEntry {
+  key: string;
+  content: string;
+  category: "user" | "project" | "preference" | "context";
+  updated_at: string;
 }
 
 export interface SessionSummary {

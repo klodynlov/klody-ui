@@ -1,12 +1,30 @@
-import type { SessionSummary } from "../hooks/useAgent";
+import { useState } from "react";
+import type { SessionSummary, MemoryEntry } from "../hooks/useAgent";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  user: "Utilisateur",
+  project: "Projets",
+  preference: "Préférences",
+  context: "Contexte",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  user: "#22d3ee",
+  project: "#a78bfa",
+  preference: "#34d399",
+  context: "#94a3b8",
+};
 
 interface Props {
   sessions: SessionSummary[];
   currentSessionId: string;
+  memories: MemoryEntry[];
   onLoad: (id: string) => void;
+  onForget: (key: string) => void;
 }
 
-export function Sidebar({ sessions, currentSessionId, onLoad }: Props) {
+export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget }: Props) {
+  const [tab, setTab] = useState<"sessions" | "memory">("sessions");
   const fmt = (ts: number) => {
     const d = new Date(ts * 1000);
     const now = new Date();
@@ -29,26 +47,95 @@ export function Sidebar({ sessions, currentSessionId, onLoad }: Props) {
         overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          padding: "12px 14px 8px",
-          color: "#64748b",
-          fontSize: "10px",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          borderBottom: "1px solid #2a2d45",
-        }}
-      >
-        Sessions
+      {/* Tabs */}
+      <div style={{ display: "flex", borderBottom: "1px solid #2a2d45", flexShrink: 0 }}>
+        {(["sessions", "memory"] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              flex: 1,
+              background: "transparent",
+              border: "none",
+              borderBottom: tab === t ? "2px solid #22d3ee" : "2px solid transparent",
+              color: tab === t ? "#22d3ee" : "#64748b",
+              fontSize: "10px",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              padding: "10px 0 8px",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "color 0.15s",
+            }}
+          >
+            {t === "sessions" ? "Sessions" : `Mémoire ${memories.length > 0 ? `(${memories.length})` : ""}`}
+          </button>
+        ))}
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
-        {sessions.length === 0 && (
+        {/* ── Onglet Mémoire ── */}
+        {tab === "memory" && memories.length === 0 && (
+          <div style={{ padding: "14px", color: "#64748b", fontSize: "11px", lineHeight: 1.5 }}>
+            Aucun souvenir.{" "}
+            <span style={{ color: "#475569" }}>
+              Dis à Klody « souviens-toi que… » pour mémoriser quelque chose.
+            </span>
+          </div>
+        )}
+        {tab === "memory" && memories.map(entry => (
+          <div
+            key={entry.key}
+            style={{
+              padding: "8px 12px",
+              borderBottom: "1px solid #13141f",
+              display: "flex",
+              flexDirection: "column",
+              gap: "3px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "4px" }}>
+              <span
+                style={{
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  color: CATEGORY_COLORS[entry.category] ?? "#94a3b8",
+                }}
+              >
+                {CATEGORY_LABELS[entry.category] ?? entry.category}
+              </span>
+              <button
+                onClick={() => onForget(entry.key)}
+                title="Oublier"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#475569",
+                  fontSize: "10px",
+                  cursor: "pointer",
+                  padding: "0 2px",
+                  lineHeight: 1,
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#f87171"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "#475569"; }}
+              >
+                ✕
+              </button>
+            </div>
+            <div style={{ color: "#94a3b8", fontSize: "10px", fontWeight: 600 }}>{entry.key}</div>
+            <div style={{ color: "#64748b", fontSize: "10px", lineHeight: 1.4 }}>{entry.content}</div>
+          </div>
+        ))}
+
+        {/* ── Onglet Sessions ── */}
+        {tab === "sessions" && sessions.length === 0 && (
           <div style={{ padding: "12px 14px", color: "#64748b", fontSize: "11px" }}>
             Aucune session sauvegardée
           </div>
         )}
-        {sessions.map((s) => (
+        {tab === "sessions" && sessions.map((s) => (
           <button
             key={s.id}
             onClick={() => onLoad(s.id)}
