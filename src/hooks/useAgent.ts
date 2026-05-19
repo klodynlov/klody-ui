@@ -20,8 +20,8 @@ export interface AgentStatus {
   thinking: boolean;
 }
 
-const API_BASE = "http://127.0.0.1:8765";
-const WS_URL = "ws://127.0.0.1:8765/api/ws";
+const API_BASE = "http://127.0.0.1:8000";
+const WS_URL = "ws://127.0.0.1:8000/api/ws";
 
 let msgCounter = 0;
 const uid = () => `m${++msgCounter}`;
@@ -235,6 +235,13 @@ export function useAgent() {
     wsRef.current?.send(JSON.stringify({ type: "model_change", model }));
   }, []);
 
+  const stopGeneration = useCallback(async () => {
+    try {
+      await fetch(`${API_BASE}/api/stop`, { method: "POST" });
+    } catch {}
+    setStatus(s => ({ ...s, thinking: false }));
+  }, []);
+
   const newSession = useCallback(() => {
     setMessages([]);
     wsRef.current?.send(JSON.stringify({ type: "session_new" }));
@@ -267,11 +274,13 @@ export function useAgent() {
     changeModel,
     newSession,
     loadSession,
+    stopGeneration,
   };
 }
 
 export interface SessionSummary {
   id: string;
+  title: string;
   messages: number;
   modified: number;
   preview: string;

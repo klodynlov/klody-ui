@@ -82,10 +82,11 @@ export function Sidebar({ sessions, currentSessionId, onLoad }: Props) {
                 overflow: "hidden",
                 textOverflow: "ellipsis",
               }}
+              title={s.title || s.id}
             >
-              {s.id.slice(0, 8)}
+              {s.title || s.id.slice(0, 8)}
             </div>
-            {s.preview && (
+            {!s.title && s.preview && (
               <div
                 style={{
                   color: "#64748b",

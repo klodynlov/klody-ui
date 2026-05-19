@@ -2,10 +2,12 @@ import { useCallback, useRef, useState } from "react";
 
 interface Props {
   disabled: boolean;
+  thinking: boolean;
   onSend: (text: string) => void;
+  onStop: () => void;
 }
 
-export function InputBar({ disabled, onSend }: Props) {
+export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -73,29 +75,55 @@ export function InputBar({ disabled, onSend }: Props) {
         onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "#22d3ee55"; }}
         onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "#2a2d45"; }}
       />
-      <button
-        onClick={submit}
-        disabled={disabled || !text.trim()}
-        style={{
-          background: disabled || !text.trim() ? "#1a1b28" : "#22d3ee",
-          border: "none",
-          borderRadius: "8px",
-          color: disabled || !text.trim() ? "#475569" : "#0a0b0f",
-          fontSize: "16px",
-          width: "40px",
-          height: "40px",
-          cursor: disabled || !text.trim() ? "not-allowed" : "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-          transition: "background 0.15s",
-          fontWeight: 700,
-        }}
-        title="Envoyer (Entrée)"
-      >
-        ▲
-      </button>
+      {thinking ? (
+        <button
+          onClick={onStop}
+          style={{
+            background: "rgba(239,68,68,0.15)",
+            border: "1px solid rgba(239,68,68,0.4)",
+            borderRadius: "8px",
+            color: "#f87171",
+            fontSize: "14px",
+            width: "40px",
+            height: "40px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.28)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.15)"; }}
+          title="Arrêter la génération"
+        >
+          ■
+        </button>
+      ) : (
+        <button
+          onClick={submit}
+          disabled={disabled || !text.trim()}
+          style={{
+            background: disabled || !text.trim() ? "#1a1b28" : "#22d3ee",
+            border: "none",
+            borderRadius: "8px",
+            color: disabled || !text.trim() ? "#475569" : "#0a0b0f",
+            fontSize: "16px",
+            width: "40px",
+            height: "40px",
+            cursor: disabled || !text.trim() ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "background 0.15s",
+            fontWeight: 700,
+          }}
+          title="Envoyer (Entrée)"
+        >
+          ▲
+        </button>
+      )}
     </div>
   );
 }

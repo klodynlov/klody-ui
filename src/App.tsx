@@ -15,6 +15,7 @@ export default function App() {
     changeModel,
     newSession,
     loadSession,
+    stopGeneration,
   } = useAgent();
 
   return (
@@ -70,7 +71,12 @@ export default function App() {
           )}
 
           <ChatPanel messages={messages} status={status} />
-          <InputBar disabled={status.thinking || !status.connected} onSend={sendMessage} />
+          <InputBar
+            disabled={!status.connected}
+            thinking={status.thinking}
+            onSend={sendMessage}
+            onStop={stopGeneration}
+          />
         </main>
       </div>
     </div>

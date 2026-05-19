@@ -319,13 +319,37 @@ interface Props {
 
 export function ChatPanel({ messages, status }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const userScrolledUp = useRef(false);
+  const lastMessageCount = useRef(0);
+
+  // Detect manual scroll-up
+  const handleScroll = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    userScrolledUp.current = distFromBottom > 80;
+  }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    // A new user message was added → always scroll to bottom
+    const userMsgs = messages.filter(m => m.role === "user").length;
+    if (userMsgs > lastMessageCount.current) {
+      userScrolledUp.current = false;
+      lastMessageCount.current = userMsgs;
+    }
+
+    if (!userScrolledUp.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, status.thinking]);
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column" }}>
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column" }}
+    >
       {messages.length === 0 && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#475569", gap: "8px" }}>
           <div style={{ fontSize: "28px", color: "#22d3ee22" }}>◆</div>
