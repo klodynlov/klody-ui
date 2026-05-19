@@ -47,6 +47,25 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
         </span>
       </div>
 
+      {/* LibraryBrain status */}
+      <div
+        title={status.libraryBrain ? "LibraryBrain actif" : "LibraryBrain hors ligne"}
+        style={{ display: "flex", alignItems: "center", gap: "6px" }}
+      >
+        <div
+          style={{
+            width: "7px",
+            height: "7px",
+            borderRadius: "50%",
+            background: status.libraryBrain ? "#a78bfa" : "#475569",
+            boxShadow: status.libraryBrain ? "0 0 6px #a78bfa66" : "none",
+          }}
+        />
+        <span style={{ color: "#64748b", fontSize: "11px" }}>
+          📚 {status.libraryBrain ? "actif" : "hors ligne"}
+        </span>
+      </div>
+
       {/* Model selector */}
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
         <span style={{ color: "#64748b", fontSize: "11px" }}>Modèle</span>

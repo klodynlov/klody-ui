@@ -14,6 +14,7 @@ export interface ChatMessage {
 export interface AgentStatus {
   connected: boolean;
   ollama: boolean;
+  libraryBrain: boolean;
   model: string;
   sessionId: string;
   messageCount: number;
@@ -31,6 +32,7 @@ export function useAgent() {
   const [status, setStatus] = useState<AgentStatus>({
     connected: false,
     ollama: false,
+    libraryBrain: false,
     model: "qwen2.5-coder:32b",
     sessionId: "",
     messageCount: 0,
@@ -210,6 +212,7 @@ export function useAgent() {
       setStatus(s => ({
         ...s,
         ollama: data.ollama,
+        libraryBrain: data.librarybrain?.up ?? false,
         model: data.model,
       }));
       setAvailableModels(data.models ?? []);
