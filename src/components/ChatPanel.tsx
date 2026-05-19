@@ -1,15 +1,171 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatMessage, AgentStatus } from "../hooks/useAgent";
 
-interface Props {
-  messages: ChatMessage[];
-  status: AgentStatus;
+// ── Parsing markdown code blocks ──────────────────────────────────────────────
+
+interface Segment {
+  type: "text" | "code";
+  content: string;
+  lang?: string;
 }
+
+function parseContent(text: string): Segment[] {
+  const segments: Segment[] = [];
+  const re = /```(\w*)\n?([\s\S]*?)```/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      segments.push({ type: "text", content: text.slice(last, m.index) });
+    }
+    segments.push({ type: "code", lang: m[1] || "text", content: m[2].trimEnd() });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) {
+    segments.push({ type: "text", content: text.slice(last) });
+  }
+  return segments.length > 0 ? segments : [{ type: "text", content: text }];
+}
+
+// ── Code block avec bouton Copier ─────────────────────────────────────────────
+
+function CodeBlock({ lang, content }: { lang: string; content: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  }, [content]);
+
+  return (
+    <div
+      style={{
+        margin: "8px 0",
+        borderRadius: "6px",
+        border: "1px solid #2a2d45",
+        overflow: "hidden",
+        background: "#0a0b10",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "5px 12px",
+          background: "#13141f",
+          borderBottom: "1px solid #2a2d45",
+        }}
+      >
+        <span style={{ color: "#64748b", fontSize: "10px", letterSpacing: "0.05em" }}>
+          {lang || "code"}
+        </span>
+        <button
+          onClick={copy}
+          style={{
+            background: copied ? "#10b981" : "transparent",
+            border: `1px solid ${copied ? "#10b981" : "#2a2d45"}`,
+            borderRadius: "3px",
+            color: copied ? "#fff" : "#94a3b8",
+            fontSize: "10px",
+            padding: "2px 8px",
+            cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+        >
+          {copied ? "✓ Copié" : "Copier"}
+        </button>
+      </div>
+      {/* Code */}
+      <pre
+        style={{
+          margin: 0,
+          padding: "14px 16px",
+          overflowX: "auto",
+          fontSize: "12px",
+          lineHeight: "1.6",
+          color: "#e2e8f0",
+          fontFamily: "JetBrains Mono, Fira Code, ui-monospace, monospace",
+        }}
+      >
+        <code>{content}</code>
+      </pre>
+    </div>
+  );
+}
+
+// ── Rendu du contenu mixte texte / code ───────────────────────────────────────
+
+function MessageContent({ text, streaming }: { text: string; streaming?: boolean }) {
+  const segments = parseContent(text);
+  const hasCode = segments.some((s) => s.type === "code");
+
+  if (!hasCode) {
+    return (
+      <span className={streaming ? "cursor-blink" : ""} style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+        {text}
+      </span>
+    );
+  }
+
+  return (
+    <div className={streaming && segments[segments.length - 1]?.type === "text" ? "cursor-blink" : ""}>
+      {segments.map((seg, i) =>
+        seg.type === "code" ? (
+          <CodeBlock key={i} lang={seg.lang!} content={seg.content} />
+        ) : (
+          <span key={i} style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {seg.content}
+          </span>
+        )
+      )}
+    </div>
+  );
+}
+
+// ── Bouton copier réponse complète ────────────────────────────────────────────
+
+function CopyResponseButton({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    });
+  }, [content]);
+
+  return (
+    <button
+      onClick={copy}
+      title="Copier la réponse"
+      style={{
+        background: "transparent",
+        border: "none",
+        color: copied ? "#34d399" : "#475569",
+        fontSize: "11px",
+        cursor: "pointer",
+        padding: "2px 4px",
+        marginTop: "4px",
+        transition: "color 0.15s",
+      }}
+    >
+      {copied ? "✓ copié" : "⎘ copier"}
+    </button>
+  );
+}
+
+// ── Tool cards ────────────────────────────────────────────────────────────────
 
 function ToolCallCard({ msg }: { msg: ChatMessage }) {
   const argsStr = msg.args
     ? Object.entries(msg.args)
-        .map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 60)}`)
+        .filter(([k]) => k !== "content")
+        .map(([k, v]) => `${k}=${JSON.stringify(v).slice(0, 80)}`)
         .join("  ")
     : "";
   return (
@@ -27,7 +183,11 @@ function ToolCallCard({ msg }: { msg: ChatMessage }) {
       <div style={{ color: "#a78bfa", fontWeight: 600, marginBottom: "2px" }}>
         ❯ {msg.name}
       </div>
-      {argsStr && <div style={{ color: "#64748b", fontFamily: "monospace" }}>{argsStr}</div>}
+      {argsStr && (
+        <div style={{ color: "#64748b", fontFamily: "monospace", wordBreak: "break-all" }}>
+          {argsStr}
+        </div>
+      )}
     </div>
   );
 }
@@ -44,10 +204,11 @@ function ToolResultCard({ msg }: { msg: ChatMessage }) {
         borderRadius: "4px",
         fontSize: "11px",
         color: "#64748b",
-        maxHeight: "120px",
+        maxHeight: "140px",
         overflowY: "auto",
         whiteSpace: "pre-wrap",
         fontFamily: "monospace",
+        wordBreak: "break-word",
       }}
     >
       {msg.content}
@@ -55,50 +216,34 @@ function ToolResultCard({ msg }: { msg: ChatMessage }) {
   );
 }
 
+// ── Thinking indicator ────────────────────────────────────────────────────────
+
 function ThinkingIndicator() {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     setElapsed(0);
-    const timer = setInterval(() => setElapsed(s => s + 1), 1000);
+    const timer = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const fmt = (s: number) => s >= 60 ? `${Math.floor(s/60)}m${s%60}s` : `${s}s`;
+  const fmt = (s: number) =>
+    s >= 60 ? `${Math.floor(s / 60)}m${s % 60}s` : `${s}s`;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "12px 0",
-        color: "#64748b",
-        fontSize: "12px",
-      }}
-    >
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 0", color: "#64748b", fontSize: "12px" }}>
       <div style={{ display: "flex", gap: "4px" }}>
         {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="thinking-dot"
-            style={{
-              width: "5px",
-              height: "5px",
-              borderRadius: "50%",
-              background: "#22d3ee",
-              animationDelay: `${i * 0.2}s`,
-            }}
-          />
+          <div key={i} className="thinking-dot" style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#22d3ee", animationDelay: `${i * 0.2}s` }} />
         ))}
       </div>
       <span>Klody réfléchit…</span>
-      {elapsed >= 5 && (
-        <span style={{ color: "#475569", fontSize: "11px" }}>{fmt(elapsed)}</span>
-      )}
+      {elapsed >= 5 && <span style={{ color: "#475569", fontSize: "11px" }}>{fmt(elapsed)}</span>}
     </div>
   );
 }
+
+// ── Message bubble ────────────────────────────────────────────────────────────
 
 function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
@@ -115,42 +260,35 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         marginBottom: "12px",
       }}
     >
-      <div
-        style={{
-          color: "#475569",
-          fontSize: "10px",
-          marginBottom: "4px",
-          paddingLeft: isUser ? 0 : "2px",
-          paddingRight: isUser ? "2px" : 0,
-        }}
-      >
+      <div style={{ color: "#475569", fontSize: "10px", marginBottom: "4px", paddingLeft: isUser ? 0 : "2px", paddingRight: isUser ? "2px" : 0 }}>
         {isUser ? "Vous" : msg.role === "error" ? "Erreur" : "Klody"}
       </div>
       <div
         style={{
-          maxWidth: "80%",
+          maxWidth: "85%",
           padding: "10px 14px",
           borderRadius: isUser ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
-          background: isUser
-            ? "#1a1b28"
-            : msg.role === "error"
-            ? "#2d1515"
-            : "#13141f",
-          border: `1px solid ${
-            isUser ? "#2e3150" : msg.role === "error" ? "#7f1d1d" : "#2a2d45"
-          }`,
+          background: isUser ? "#1a1b28" : msg.role === "error" ? "#2d1515" : "#13141f",
+          border: `1px solid ${isUser ? "#2e3150" : msg.role === "error" ? "#7f1d1d" : "#2a2d45"}`,
           color: msg.role === "error" ? "#f87171" : "#cbd5e1",
           fontSize: "13px",
           lineHeight: "1.6",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
         }}
-        className={msg.streaming ? "cursor-blink" : ""}
       >
-        {msg.content}
+        <MessageContent text={msg.content} streaming={msg.streaming} />
       </div>
+      {!isUser && !msg.streaming && msg.content && (
+        <CopyResponseButton content={msg.content} />
+      )}
     </div>
   );
+}
+
+// ── ChatPanel ─────────────────────────────────────────────────────────────────
+
+interface Props {
+  messages: ChatMessage[];
+  status: AgentStatus;
 }
 
 export function ChatPanel({ messages, status }: Props) {
@@ -161,38 +299,17 @@ export function ChatPanel({ messages, status }: Props) {
   }, [messages, status.thinking]);
 
   return (
-    <div
-      style={{
-        flex: 1,
-        overflowY: "auto",
-        padding: "20px 24px",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column" }}>
       {messages.length === 0 && (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#475569",
-            gap: "8px",
-          }}
-        >
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#475569", gap: "8px" }}>
           <div style={{ fontSize: "28px", color: "#22d3ee22" }}>◆</div>
           <div style={{ fontSize: "13px" }}>Nouvelle session — décris ta tâche</div>
         </div>
       )}
-
       {messages.map((msg) => (
         <MessageBubble key={msg.id} msg={msg} />
       ))}
-
       {status.thinking && <ThinkingIndicator />}
-
       <div ref={bottomRef} />
     </div>
   );
