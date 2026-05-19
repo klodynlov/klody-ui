@@ -119,7 +119,6 @@ export function useAgent() {
         break;
 
       case "discard_stream":
-        // Le stream était un tool call JSON — supprimer la bulle
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === "assistant" && last.streaming) {
@@ -127,6 +126,20 @@ export function useAgent() {
           }
           return prev;
         });
+        break;
+
+      case "stream_trim":
+        // Texte + JSON mélangés : garder uniquement la partie texte
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant" && last.streaming) {
+            const trimmed = (event.content as string).trim();
+            if (!trimmed) return prev.slice(0, -1);
+            return [...prev.slice(0, -1), { ...last, content: trimmed, streaming: false }];
+          }
+          return prev;
+        });
+        setStatus(s => ({ ...s, thinking: false }));
         break;
 
       case "assistant":

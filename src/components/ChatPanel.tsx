@@ -32,6 +32,7 @@ function parseContent(text: string): Segment[] {
 
 function CodeBlock({ lang, content }: { lang: string; content: string }) {
   const [copied, setCopied] = useState(false);
+  const lines = content.split("\n");
 
   const copy = useCallback(() => {
     navigator.clipboard.writeText(content).then(() => {
@@ -80,20 +81,45 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
           {copied ? "✓ Copié" : "Copier"}
         </button>
       </div>
-      {/* Code */}
-      <pre
-        style={{
-          margin: 0,
-          padding: "14px 16px",
-          overflowX: "auto",
-          fontSize: "12px",
-          lineHeight: "1.6",
-          color: "#e2e8f0",
-          fontFamily: "JetBrains Mono, Fira Code, ui-monospace, monospace",
-        }}
-      >
-        <code>{content}</code>
-      </pre>
+      {/* Code with line numbers */}
+      <div style={{ overflowX: "auto" }}>
+        <table
+          style={{
+            borderCollapse: "collapse",
+            width: "100%",
+            fontSize: "12px",
+            lineHeight: "1.6",
+            fontFamily: "JetBrains Mono, Fira Code, ui-monospace, monospace",
+          }}
+        >
+          <tbody>
+            {lines.map((line, i) => (
+              <tr key={i} style={{ verticalAlign: "top" }}>
+                <td
+                  style={{
+                    userSelect: "none",
+                    textAlign: "right",
+                    padding: `${i === 0 ? "14px" : "0"} 12px ${i === lines.length - 1 ? "14px" : "0"} 16px`,
+                    color: "#3d4466",
+                    minWidth: "40px",
+                  }}
+                >
+                  {i + 1}
+                </td>
+                <td
+                  style={{
+                    padding: `${i === 0 ? "14px" : "0"} 16px ${i === lines.length - 1 ? "14px" : "0"} 0`,
+                    color: "#e2e8f0",
+                    whiteSpace: "pre",
+                  }}
+                >
+                  {line || " "}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
