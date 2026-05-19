@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-space-950: #07080d;
+  --color-space-900: #0d0e16;
+  --color-space-800: #13141f;
+  --color-space-700: #1a1b28;
+  --color-space-600: #22253a;
+  --color-space-500: #2e3150;
+  --color-border: #2a2d45;
+  --color-cyan-400: #22d3ee;
+  --color-cyan-300: #67e8f9;
+  --color-violet-500: #8b5cf6;
+  --color-violet-400: #a78bfa;
+  --color-green-400: #34d399;
+  --color-amber-400: #fbbf24;
+  --color-red-400: #f87171;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--color-space-950);
+  color: var(--color-slate-300);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar cosmique */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-space-600); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-space-500); }
+
+/* Curseur clignotant pour streaming */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor-blink::after {
+  content: "▋";
+  animation: blink 1s step-start infinite;
+  color: var(--color-cyan-400);
+  margin-left: 1px;
+}
+
+/* Pulse doux pour l'état "thinking" */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.thinking-dot {
+  animation: pulse-glow 1.2s ease-in-out infinite;
+}
