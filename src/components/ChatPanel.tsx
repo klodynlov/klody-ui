@@ -1,34 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import type { Components } from "react-markdown";
 import type { ChatMessage, AgentStatus } from "../hooks/useAgent";
 
-// ── Parsing markdown code blocks ──────────────────────────────────────────────
-
-interface Segment {
-  type: "text" | "code";
-  content: string;
-  lang?: string;
-}
-
-function parseContent(text: string): Segment[] {
-  const segments: Segment[] = [];
-  const re = /```(\w*)\n?([\s\S]*?)```/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) {
-      segments.push({ type: "text", content: text.slice(last, m.index) });
-    }
-    segments.push({ type: "code", lang: m[1] || "text", content: m[2].trimEnd() });
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) {
-    segments.push({ type: "text", content: text.slice(last) });
-  }
-  return segments.length > 0 ? segments : [{ type: "text", content: text }];
-}
-
-// ── Code block avec bouton Copier ─────────────────────────────────────────────
+// ── Code block avec numéros de ligne et bouton Copier ─────────────────────────
 
 function CodeBlock({ lang, content }: { lang: string; content: string }) {
   const [copied, setCopied] = useState(false);
@@ -51,7 +26,6 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
         background: "#0a0b10",
       }}
     >
-      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -81,7 +55,6 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
           {copied ? "✓ Copié" : "Copier"}
         </button>
       </div>
-      {/* Code with line numbers */}
       <div style={{ overflowX: "auto" }}>
         <table
           style={{
@@ -99,7 +72,7 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
                   style={{
                     userSelect: "none",
                     textAlign: "right",
-                    padding: `${i === 0 ? "14px" : "0"} 12px ${i === lines.length - 1 ? "14px" : "0"} 16px`,
+                    padding: `${i === 0 ? "12px" : "0"} 12px ${i === lines.length - 1 ? "12px" : "0"} 16px`,
                     color: "#3d4466",
                     minWidth: "40px",
                   }}
@@ -108,7 +81,7 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
                 </td>
                 <td
                   style={{
-                    padding: `${i === 0 ? "14px" : "0"} 16px ${i === lines.length - 1 ? "14px" : "0"} 0`,
+                    padding: `${i === 0 ? "12px" : "0"} 16px ${i === lines.length - 1 ? "12px" : "0"} 0`,
                     color: "#e2e8f0",
                     whiteSpace: "pre",
                   }}
@@ -124,31 +97,67 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
   );
 }
 
-// ── Rendu du contenu mixte texte / code ───────────────────────────────────────
+// ── Composants react-markdown ─────────────────────────────────────────────────
 
-function MessageContent({ text, streaming }: { text: string; streaming?: boolean }) {
-  const segments = parseContent(text);
-  const hasCode = segments.some((s) => s.type === "code");
-
-  if (!hasCode) {
+const MD_COMPONENTS: Components = {
+  code({ className, children, ...props }) {
+    const match = /language-(\w+)/.exec(className || "");
+    const isBlock = !props.ref && String(children).includes("\n");
+    if (isBlock || match) {
+      return <CodeBlock lang={match?.[1] ?? ""} content={String(children).replace(/\n$/, "")} />;
+    }
     return (
-      <span className={streaming ? "cursor-blink" : ""} style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+      <code
+        style={{
+          background: "#13141f",
+          border: "1px solid #2a2d45",
+          borderRadius: "3px",
+          padding: "1px 5px",
+          fontSize: "12px",
+          fontFamily: "JetBrains Mono, Fira Code, ui-monospace, monospace",
+          color: "#22d3ee",
+        }}
+      >
+        {children}
+      </code>
+    );
+  },
+  h1: ({ children }) => <div style={{ fontSize: "17px", fontWeight: 700, color: "#e2e8f0", margin: "12px 0 6px" }}>{children}</div>,
+  h2: ({ children }) => <div style={{ fontSize: "15px", fontWeight: 700, color: "#e2e8f0", margin: "10px 0 5px" }}>{children}</div>,
+  h3: ({ children }) => <div style={{ fontSize: "13px", fontWeight: 700, color: "#cbd5e1", margin: "8px 0 4px" }}>{children}</div>,
+  p: ({ children }) => <p style={{ margin: "4px 0", lineHeight: 1.65 }}>{children}</p>,
+  ul: ({ children }) => <ul style={{ margin: "4px 0", paddingLeft: "20px" }}>{children}</ul>,
+  ol: ({ children }) => <ol style={{ margin: "4px 0", paddingLeft: "20px" }}>{children}</ol>,
+  li: ({ children }) => <li style={{ margin: "2px 0", lineHeight: 1.6 }}>{children}</li>,
+  strong: ({ children }) => <strong style={{ color: "#e2e8f0", fontWeight: 600 }}>{children}</strong>,
+  em: ({ children }) => <em style={{ color: "#94a3b8" }}>{children}</em>,
+  blockquote: ({ children }) => (
+    <blockquote style={{ borderLeft: "3px solid #2e3150", paddingLeft: "12px", margin: "6px 0", color: "#64748b" }}>
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr style={{ border: "none", borderTop: "1px solid #2a2d45", margin: "10px 0" }} />,
+  a: ({ href, children }) => (
+    <a href={href} style={{ color: "#22d3ee", textDecoration: "none" }} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
+};
+
+// ── Rendu du contenu message ──────────────────────────────────────────────────
+
+function MessageContent({ text, streaming, isUser }: { text: string; streaming?: boolean; isUser?: boolean }) {
+  if (isUser) {
+    return (
+      <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
         {text}
       </span>
     );
   }
 
   return (
-    <div className={streaming && segments[segments.length - 1]?.type === "text" ? "cursor-blink" : ""}>
-      {segments.map((seg, i) =>
-        seg.type === "code" ? (
-          <CodeBlock key={i} lang={seg.lang!} content={seg.content} />
-        ) : (
-          <span key={i} style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {seg.content}
-          </span>
-        )
-      )}
+    <div className={streaming ? "cursor-blink" : ""} style={{ wordBreak: "break-word" }}>
+      <ReactMarkdown components={MD_COMPONENTS}>{text}</ReactMarkdown>
     </div>
   );
 }
@@ -301,7 +310,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           lineHeight: "1.6",
         }}
       >
-        <MessageContent text={msg.content} streaming={msg.streaming} />
+        <MessageContent text={msg.content} streaming={msg.streaming} isUser={isUser} />
       </div>
       {!isUser && !msg.streaming && msg.content && (
         <CopyResponseButton content={msg.content} />

@@ -136,60 +136,81 @@ export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget
           </div>
         )}
         {tab === "sessions" && sessions.map((s) => (
-          <button
+          <div
             key={s.id}
-            onClick={() => onLoad(s.id)}
             style={{
-              display: "block",
-              width: "100%",
-              textAlign: "left",
-              padding: "8px 14px",
-              background: s.id === currentSessionId ? "#13141f" : "transparent",
-              border: "none",
+              display: "flex",
+              alignItems: "stretch",
               borderLeft: s.id === currentSessionId ? "2px solid #22d3ee" : "2px solid transparent",
-              cursor: "pointer",
+              background: s.id === currentSessionId ? "#13141f" : "transparent",
               transition: "background 0.1s",
             }}
             onMouseEnter={(e) => {
               if (s.id !== currentSessionId)
-                (e.currentTarget as HTMLButtonElement).style.background = "#13141f";
+                (e.currentTarget as HTMLDivElement).style.background = "#13141f";
             }}
             onMouseLeave={(e) => {
               if (s.id !== currentSessionId)
-                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                (e.currentTarget as HTMLDivElement).style.background = "transparent";
             }}
           >
-            <div
+            {/* Zone cliquable pour charger */}
+            <button
+              onClick={() => onLoad(s.id)}
               style={{
-                color: s.id === currentSessionId ? "#22d3ee" : "#94a3b8",
-                fontSize: "11px",
-                fontWeight: 600,
-                marginBottom: "2px",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                flex: 1,
+                textAlign: "left",
+                padding: "8px 10px 8px 12px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                minWidth: 0,
               }}
-              title={s.title || s.id}
             >
-              {s.title || s.id.slice(0, 8)}
-            </div>
-            {!s.title && s.preview && (
               <div
                 style={{
-                  color: "#64748b",
-                  fontSize: "10px",
+                  color: s.id === currentSessionId ? "#22d3ee" : "#94a3b8",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  marginBottom: "2px",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                 }}
+                title={s.title || s.id}
               >
-                {s.preview}
+                {s.title || s.id.slice(0, 8)}
               </div>
-            )}
-            <div style={{ color: "#475569", fontSize: "10px", marginTop: "2px" }}>
-              {fmt(s.modified)} · {s.messages} msgs
-            </div>
-          </button>
+              {!s.title && s.preview && (
+                <div style={{ color: "#64748b", fontSize: "10px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {s.preview}
+                </div>
+              )}
+              <div style={{ color: "#475569", fontSize: "10px", marginTop: "2px" }}>
+                {fmt(s.modified)} · {s.messages} msgs
+              </div>
+            </button>
+            {/* Bouton export Markdown */}
+            <a
+              href={`http://127.0.0.1:8000/api/sessions/${s.id}/export`}
+              download
+              title="Exporter en Markdown"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "0 10px",
+                color: "#475569",
+                fontSize: "12px",
+                textDecoration: "none",
+                flexShrink: 0,
+                transition: "color 0.15s",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#22d3ee"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#475569"; }}
+            >
+              ↓
+            </a>
+          </div>
         ))}
       </div>
 
