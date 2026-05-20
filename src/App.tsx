@@ -1,4 +1,5 @@
 import "./index.css";
+import { useEffect } from "react";
 import { useAgent } from "./hooks/useAgent";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
@@ -19,6 +20,18 @@ export default function App() {
     stopGeneration,
     forgetMemory,
   } = useAgent();
+
+  // Cmd+K (Mac) / Ctrl+K → nouvelle session
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        newSession();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [newSession]);
 
   return (
     <div

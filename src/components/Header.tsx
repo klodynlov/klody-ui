@@ -126,7 +126,7 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
           (e.target as HTMLButtonElement).style.color = "#94a3b8";
         }}
       >
-        + Nouvelle session
+        + Nouvelle  <span style={{ opacity: 0.5, fontSize: "10px", marginLeft: "4px" }}>⌘K</span>
       </button>
 
       {/* Connection dot */}
