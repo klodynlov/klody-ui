@@ -51,7 +51,7 @@ html, body, #root {
 .cursor-blink::after {
   content: "▋";
   animation: blink 1s step-start infinite;
-  color: var(--color-cyan-400);
+  color: var(--color-amber-400);
   margin-left: 1px;
 }
 

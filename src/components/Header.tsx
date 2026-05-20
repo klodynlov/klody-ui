@@ -26,7 +26,7 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
         <span style={{ color: "#22d3ee", fontWeight: 700, fontSize: "15px", letterSpacing: "0.05em" }}>
           ◆ KLODY
         </span>
-        <span style={{ color: "#64748b", fontSize: "11px" }}>AI</span>
+        <span style={{ color: "#f59e0b", fontSize: "11px", fontWeight: 700, letterSpacing: "0.12em" }}>AI</span>
       </div>
 
       <div style={{ flex: 1 }} />
@@ -98,7 +98,7 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
       {/* Session info */}
       {status.sessionId && (
         <span style={{ color: "#64748b", fontSize: "11px" }}>
-          Session <span style={{ color: "#94a3b8" }}>{status.sessionId.slice(0, 8)}</span>
+          Session <span style={{ color: "#f59e0b" }}>{status.sessionId.slice(0, 8)}</span>
           {" · "}
           <span style={{ color: "#94a3b8" }}>{status.messageCount} msgs</span>
         </span>
@@ -136,8 +136,8 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
           width: "7px",
           height: "7px",
           borderRadius: "50%",
-          background: status.connected ? "#22d3ee" : "#64748b",
-          boxShadow: status.connected ? "0 0 8px #22d3ee55" : "none",
+          background: status.connected ? "#f59e0b" : "#64748b",
+          boxShadow: status.connected ? "0 0 8px #f59e0b66" : "none",
         }}
       />
     </header>

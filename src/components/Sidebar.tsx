@@ -26,14 +26,18 @@ interface Props {
 export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget }: Props) {
   const [tab, setTab] = useState<"sessions" | "memory">("sessions");
   const [search, setSearch] = useState("");
-  const fmt = (ts: number) => {
+  const fmtLabel = (ts: number) => {
     const d = new Date(ts * 1000);
     const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    if (diff < 60000) return "à l'instant";
-    if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
-    if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)} h`;
-    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    if (isToday) return `Aujourd'hui · ${time}`;
+    if (isYesterday) return `Hier · ${time}`;
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} · ${time}`;
   };
 
   return (
@@ -176,7 +180,7 @@ export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget
             style={{
               display: "flex",
               alignItems: "stretch",
-              borderLeft: s.id === currentSessionId ? "2px solid #22d3ee" : "2px solid transparent",
+              borderLeft: s.id === currentSessionId ? "2px solid #f59e0b" : "2px solid transparent",
               background: s.id === currentSessionId ? "#13141f" : "transparent",
               transition: "background 0.1s",
             }}
@@ -204,25 +208,32 @@ export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget
             >
               <div
                 style={{
-                  color: s.id === currentSessionId ? "#22d3ee" : "#94a3b8",
-                  fontSize: "11px",
-                  fontWeight: 600,
+                  color: s.id === currentSessionId ? "#f59e0b" : "#64748b",
+                  fontSize: "10px",
                   marginBottom: "2px",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
+                  letterSpacing: "0.02em",
                 }}
-                title={s.title || s.id}
               >
-                {s.title || s.id.slice(0, 8)}
+                {fmtLabel(s.modified)}
               </div>
-              {!s.title && s.preview && (
-                <div style={{ color: "#64748b", fontSize: "10px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {s.preview}
-                </div>
-              )}
+              <div
+                style={{
+                  color: s.id === currentSessionId ? "#fde68a" : "#94a3b8",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+                title={s.title || s.preview || s.id}
+              >
+                {s.title || s.preview || "Nouvelle session"}
+              </div>
               <div style={{ color: "#475569", fontSize: "10px", marginTop: "2px" }}>
-                {fmt(s.modified)} · {s.messages} msgs
+                {s.messages} msgs
               </div>
             </button>
             {/* Bouton export Markdown */}
