@@ -25,6 +25,7 @@ interface Props {
 
 export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget }: Props) {
   const [tab, setTab] = useState<"sessions" | "memory">("sessions");
+  const [search, setSearch] = useState("");
   const fmt = (ts: number) => {
     const d = new Date(ts * 1000);
     const now = new Date();
@@ -72,6 +73,32 @@ export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget
           </button>
         ))}
       </div>
+
+      {/* Barre de recherche sessions */}
+      {tab === "sessions" && (
+        <div style={{ padding: "6px 10px", borderBottom: "1px solid #2a2d45" }}>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Chercher…"
+            style={{
+              width: "100%",
+              background: "#13141f",
+              border: "1px solid #2a2d45",
+              borderRadius: "6px",
+              color: "#cbd5e1",
+              fontSize: "11px",
+              padding: "5px 10px",
+              outline: "none",
+              fontFamily: "inherit",
+              boxSizing: "border-box",
+            }}
+            onFocus={e => { (e.target as HTMLInputElement).style.borderColor = "#22d3ee55"; }}
+            onBlur={e => { (e.target as HTMLInputElement).style.borderColor = "#2a2d45"; }}
+          />
+        </div>
+      )}
 
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
         {/* ── Onglet Mémoire ── */}
@@ -130,12 +157,20 @@ export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget
         ))}
 
         {/* ── Onglet Sessions ── */}
-        {tab === "sessions" && sessions.length === 0 && (
-          <div style={{ padding: "12px 14px", color: "#64748b", fontSize: "11px" }}>
-            Aucune session sauvegardée
-          </div>
-        )}
-        {tab === "sessions" && sessions.map((s) => (
+        {tab === "sessions" && (() => {
+          const q = search.toLowerCase().trim();
+          const filtered = q
+            ? sessions.filter(s =>
+                (s.title || s.id).toLowerCase().includes(q) ||
+                s.preview.toLowerCase().includes(q)
+              )
+            : sessions;
+          if (filtered.length === 0) return (
+            <div style={{ padding: "12px 14px", color: "#64748b", fontSize: "11px" }}>
+              {q ? `Aucun résultat pour « ${search} »` : "Aucune session sauvegardée"}
+            </div>
+          );
+          return filtered.map((s) => (
           <div
             key={s.id}
             style={{
@@ -211,7 +246,8 @@ export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget
               ↓
             </a>
           </div>
-        ))}
+        ));
+        })()}
       </div>
 
       {/* Footer */}
