@@ -1,3 +1,4 @@
+import klodyLogo from "../assets/klody_logo.png";
 import type { AgentStatus } from "../hooks/useAgent";
 
 interface Props {
@@ -22,12 +23,11 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
       }}
     >
       {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ color: "#22d3ee", fontWeight: 700, fontSize: "15px", letterSpacing: "0.05em" }}>
-          ◆ KLODY
-        </span>
-        <span style={{ color: "#f59e0b", fontSize: "11px", fontWeight: 700, letterSpacing: "0.12em" }}>AI</span>
-      </div>
+      <img
+        src={klodyLogo}
+        alt="Klody AI"
+        style={{ height: "30px", width: "auto", display: "block", flexShrink: 0, mixBlendMode: "screen" }}
+      />
 
       <div style={{ flex: 1 }} />
 

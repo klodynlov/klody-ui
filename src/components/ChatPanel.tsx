@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import klodyLogo from "../assets/klody_logo.png";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import type { ChatMessage, AgentStatus } from "../hooks/useAgent";
@@ -360,9 +361,15 @@ export function ChatPanel({ messages, status }: Props) {
       style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column" }}
     >
       {messages.length === 0 && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#475569", gap: "8px" }}>
-          <div style={{ fontSize: "28px", color: "#22d3ee22" }}>◆</div>
-          <div style={{ fontSize: "13px" }}>Nouvelle session — décris ta tâche</div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px" }}>
+          <img
+            src={klodyLogo}
+            alt="Klody AI"
+            style={{ width: "280px", height: "auto", opacity: 0.9, display: "block", mixBlendMode: "screen" }}
+          />
+          <div style={{ color: "#475569", fontSize: "13px", letterSpacing: "0.04em" }}>
+            Nouvelle session — décris ta tâche
+          </div>
         </div>
       )}
       {messages.map((msg) => (
