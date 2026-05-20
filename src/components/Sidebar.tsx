@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { SessionSummary, MemoryEntry } from "../hooks/useAgent";
 
+const API_BASE = "http://127.0.0.1:8000";
+
 const CATEGORY_LABELS: Record<string, string> = {
   user: "Utilisateur",
   project: "Projets",
@@ -238,7 +240,7 @@ export function Sidebar({ sessions, currentSessionId, memories, onLoad, onForget
             </button>
             {/* Bouton export Markdown */}
             <a
-              href={`http://127.0.0.1:8000/api/sessions/${s.id}/export`}
+              href={`${API_BASE}/api/sessions/${s.id}/export`}
               download
               title="Exporter en Markdown"
               style={{
