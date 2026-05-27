@@ -1,0 +1,57 @@
+version: 2
+updates:
+  # Dépendances npm (Vite + React + Tauri 2)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "npm"
+    groups:
+      react-ecosystem:
+        applies-to: "version-updates"
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      build-tooling:
+        applies-to: "version-updates"
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "typescript"
+      tauri:
+        applies-to: "version-updates"
+        patterns:
+          - "@tauri-apps/*"
+
+  # Dépendances Cargo (côté src-tauri/)
+  - package-ecosystem: "cargo"
+    directory: "/src-tauri"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    labels:
+      - "deps"
+      - "rust"
+
+  # Actions GitHub
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    labels:
+      - "deps"
+      - "github-actions"
