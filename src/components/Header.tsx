@@ -1,5 +1,5 @@
-import klodyLogo from "../assets/klody_logo.png";
 import type { AgentStatus } from "../hooks/useAgent";
+import { colors, radii, shadows } from "../theme";
 
 interface Props {
   status: AgentStatus;
@@ -8,136 +8,169 @@ interface Props {
   onNewSession: () => void;
 }
 
+// ── Status dot (vert/rouge selon connecté) ───────────────────────────────────
+
+function StatusDot({ active, label, color = colors.success }: { active: boolean; label: string; color?: string }) {
+  return (
+    <div
+      title={`${label} ${active ? "actif" : "hors ligne"}`}
+      style={{ display: "flex", alignItems: "center", gap: "6px" }}
+    >
+      <div
+        style={{
+          width: "7px",
+          height: "7px",
+          borderRadius: radii.pill,
+          background: active ? color : colors.textSoft,
+          boxShadow: active ? `0 0 0 3px ${color}22` : "none",
+          transition: "all 0.15s",
+        }}
+      />
+      <span style={{ color: colors.textMuted, fontSize: "11.5px" }}>{label}</span>
+    </div>
+  );
+}
+
+// Tronque un nom de modèle (ex: "mlx-community/Qwen3-Coder-30B-…") en truc lisible
+function shortModel(model: string): string {
+  if (!model) return "";
+  // Garde la partie après le dernier "/" puis tronque
+  const last = model.split("/").pop() ?? model;
+  return last.length > 32 ? last.slice(0, 32) + "…" : last;
+}
+
 export function Header({ status, availableModels, onModelChange, onNewSession }: Props) {
   return (
     <header
       style={{
-        background: "#0d0e16",
-        borderBottom: "1px solid #2a2d45",
-        padding: "0 16px",
-        height: "48px",
+        background: colors.bg,
+        borderBottom: `1px solid ${colors.border}`,
+        boxShadow: shadows.sm,
+        padding: "0 24px",
+        height: "52px",
         display: "flex",
         alignItems: "center",
-        gap: "16px",
+        gap: "20px",
         flexShrink: 0,
       }}
     >
-      {/* Logo */}
-      <img
-        src={klodyLogo}
-        alt="Klody AI"
-        style={{ height: "30px", width: "auto", display: "block", flexShrink: 0, mixBlendMode: "screen" }}
-      />
+      {/* Wordmark — plus discret */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: "6px", flexShrink: 0 }}>
+        <span
+          style={{
+            fontSize: "17px",
+            fontWeight: 400,
+            letterSpacing: "0.12em",
+            color: colors.text,
+            fontFamily: "Georgia, 'Times New Roman', serif",
+          }}
+        >
+          Klody
+        </span>
+        <span
+          style={{
+            fontSize: "9px",
+            color: colors.textSoft,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            fontWeight: 500,
+          }}
+        >
+          AI
+        </span>
+      </div>
 
       <div style={{ flex: 1 }} />
 
-      {/* Ollama status */}
-      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        <div
+      <StatusDot active={status.ollama || (status.backend === "mlx")}
+                 label={status.backend === "mlx" ? "MLX" : "Ollama"}
+                 color={status.backend === "mlx" ? colors.primary : colors.success} />
+      <StatusDot active={status.libraryBrain} label="📚 LibraryBrain" color={colors.accentViolet} />
+
+      {/* Model selector — Bootstrap-like select compact */}
+      {availableModels.length > 1 ? (
+        <select
+          value={status.model}
+          onChange={(e) => onModelChange(e.target.value)}
+          title={status.model}
           style={{
-            width: "7px",
-            height: "7px",
-            borderRadius: "50%",
-            background: status.ollama ? "#34d399" : "#f87171",
-            boxShadow: status.ollama ? "0 0 6px #34d39966" : "none",
+            background: colors.bgAlt,
+            border: `1px solid ${colors.border}`,
+            color: colors.text,
+            fontSize: "11.5px",
+            padding: "5px 10px",
+            borderRadius: radii.md,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            fontWeight: 500,
+            maxWidth: "260px",
           }}
-        />
-        <span style={{ color: "#64748b", fontSize: "11px" }}>
-          Ollama {status.ollama ? "actif" : "hors ligne"}
-        </span>
-      </div>
-
-      {/* LibraryBrain status */}
-      <div
-        title={status.libraryBrain ? "LibraryBrain actif" : "LibraryBrain hors ligne"}
-        style={{ display: "flex", alignItems: "center", gap: "6px" }}
-      >
-        <div
+        >
+          {availableModels.map((m) => (
+            <option key={m} value={m}>{shortModel(m)}</option>
+          ))}
+        </select>
+      ) : (
+        <span
+          title={status.model}
           style={{
-            width: "7px",
-            height: "7px",
-            borderRadius: "50%",
-            background: status.libraryBrain ? "#a78bfa" : "#475569",
-            boxShadow: status.libraryBrain ? "0 0 6px #a78bfa66" : "none",
+            color: colors.textMuted,
+            fontSize: "11.5px",
+            background: colors.bgAlt,
+            padding: "4px 10px",
+            borderRadius: radii.md,
+            border: `1px solid ${colors.border}`,
           }}
-        />
-        <span style={{ color: "#64748b", fontSize: "11px" }}>
-          📚 {status.libraryBrain ? "actif" : "hors ligne"}
-        </span>
-      </div>
-
-      {/* Model selector */}
-      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        <span style={{ color: "#64748b", fontSize: "11px" }}>Modèle</span>
-        {availableModels.length > 1 ? (
-          <select
-            value={status.model}
-            onChange={(e) => onModelChange(e.target.value)}
-            style={{
-              background: "#13141f",
-              border: "1px solid #2a2d45",
-              color: "#22d3ee",
-              fontSize: "11px",
-              padding: "2px 6px",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            {availableModels.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-        ) : (
-          <span style={{ color: "#22d3ee", fontSize: "11px" }}>{status.model}</span>
-        )}
-      </div>
-
-      {/* Separator */}
-      <div style={{ width: "1px", height: "20px", background: "#2a2d45" }} />
-
-      {/* Session info */}
-      {status.sessionId && (
-        <span style={{ color: "#64748b", fontSize: "11px" }}>
-          Session <span style={{ color: "#f59e0b" }}>{status.sessionId.slice(0, 8)}</span>
-          {" · "}
-          <span style={{ color: "#94a3b8" }}>{status.messageCount} msgs</span>
+        >
+          {shortModel(status.model)}
         </span>
       )}
 
-      {/* New session */}
+      {/* Session compteur (sans hex) */}
+      {status.messageCount > 0 && (
+        <span style={{ color: colors.textMuted, fontSize: "11.5px" }}>
+          {status.messageCount} {status.messageCount === 1 ? "message" : "messages"}
+        </span>
+      )}
+
+      {/* New session — primary button compact */}
       <button
         onClick={onNewSession}
         style={{
-          background: "transparent",
-          border: "1px solid #2a2d45",
-          color: "#94a3b8",
-          fontSize: "11px",
-          padding: "4px 10px",
-          borderRadius: "4px",
+          background: colors.primary,
+          border: "none",
+          color: colors.textInvert,
+          fontSize: "12px",
+          fontWeight: 500,
+          padding: "7px 14px",
+          borderRadius: radii.md,
           cursor: "pointer",
-          transition: "border-color 0.15s, color 0.15s",
+          transition: "background 0.15s",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
         }}
         onMouseEnter={(e) => {
-          (e.target as HTMLButtonElement).style.borderColor = "#22d3ee";
-          (e.target as HTMLButtonElement).style.color = "#22d3ee";
+          (e.currentTarget as HTMLButtonElement).style.background = colors.primaryHover;
         }}
         onMouseLeave={(e) => {
-          (e.target as HTMLButtonElement).style.borderColor = "#2a2d45";
-          (e.target as HTMLButtonElement).style.color = "#94a3b8";
+          (e.currentTarget as HTMLButtonElement).style.background = colors.primary;
         }}
       >
-        + Nouvelle  <span style={{ opacity: 0.5, fontSize: "10px", marginLeft: "4px" }}>⌘K</span>
+        + Nouvelle
+        <span style={{ opacity: 0.7, fontSize: "10px" }}>⌘K</span>
       </button>
 
       {/* Connection dot */}
       <div
         title={status.connected ? "Connecté au backend" : "Backend déconnecté"}
         style={{
-          width: "7px",
-          height: "7px",
-          borderRadius: "50%",
-          background: status.connected ? "#f59e0b" : "#64748b",
-          boxShadow: status.connected ? "0 0 8px #f59e0b66" : "none",
+          width: "8px",
+          height: "8px",
+          borderRadius: radii.pill,
+          background: status.connected ? colors.success : colors.danger,
+          boxShadow: status.connected ? `0 0 0 3px ${colors.success}22` : `0 0 0 3px ${colors.danger}22`,
+          transition: "all 0.15s",
         }}
       />
     </header>

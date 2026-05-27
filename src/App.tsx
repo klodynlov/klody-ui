@@ -5,6 +5,7 @@ import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { ChatPanel } from "./components/ChatPanel";
 import { InputBar } from "./components/InputBar";
+import { colors } from "./theme";
 
 export default function App() {
   const {
@@ -13,6 +14,7 @@ export default function App() {
     sessions,
     availableModels,
     memories,
+    projectInfo,
     sendMessage,
     changeModel,
     newSession,
@@ -39,7 +41,8 @@ export default function App() {
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: "#07080d",
+        background: colors.bg,
+        color: colors.text,
         overflow: "hidden",
       }}
     >
@@ -55,6 +58,12 @@ export default function App() {
           sessions={sessions}
           currentSessionId={status.sessionId}
           memories={memories}
+          projectInfo={{
+            ...projectInfo,
+            backend: status.backend,
+            model: status.model,
+            mcp_server_active: status.mcpServerActive,
+          }}
           onLoad={loadSession}
           onForget={forgetMemory}
         />
@@ -65,25 +74,34 @@ export default function App() {
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            background: "#07080d",
+            background: colors.bg,
           }}
         >
           {!status.connected && (
             <div
+              role="alert"
               style={{
-                background: "#1a0f0f",
-                borderBottom: "1px solid #7f1d1d",
-                padding: "8px 16px",
-                color: "#f87171",
-                fontSize: "12px",
+                background: colors.dangerSoft,
+                borderBottom: `1px solid ${colors.danger}`,
+                padding: "10px 16px",
+                color: colors.dangerText,
+                fontSize: "13px",
                 textAlign: "center",
               }}
             >
-              Backend déconnecté — lancer{" "}
-              <code style={{ background: "#2d1515", padding: "1px 6px", borderRadius: "3px" }}>
+              <strong>Backend déconnecté.</strong> Lancer{" "}
+              <code
+                style={{
+                  background: colors.bg,
+                  border: `1px solid ${colors.danger}`,
+                  padding: "1px 6px",
+                  borderRadius: "3px",
+                  fontFamily: "inherit",
+                }}
+              >
                 python api/server.py
               </code>{" "}
-              dans klody-code-ai
+              dans <code>klody-code-ai</code>.
             </div>
           )}
 

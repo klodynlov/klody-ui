@@ -1,6 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  RouterDecision,
+  SandboxCheck,
+  BestOfNResult,
+  ProjectInfo,
+} from "../components/v2";
 
-export type MessageRole = "user" | "assistant" | "tool_call" | "tool_result" | "thinking" | "error";
+export type MessageRole =
+  | "user"
+  | "assistant"
+  | "tool_call"
+  | "tool_result"
+  | "thinking"
+  | "error"
+  | "router"
+  | "sandbox"
+  | "best_of_n";
+
+export interface MessageStats {
+  latency_s: number;
+  tokens: number;
+  model?: string;
+}
 
 export interface ChatMessage {
   id: string;
@@ -9,6 +30,11 @@ export interface ChatMessage {
   name?: string;
   args?: Record<string, unknown>;
   streaming?: boolean;
+  // Payloads v2 spécifiques (selon role)
+  router?: RouterDecision;
+  sandbox?: SandboxCheck;
+  bestOfN?: BestOfNResult;
+  stats?: MessageStats;
 }
 
 export interface AgentStatus {
@@ -19,6 +45,8 @@ export interface AgentStatus {
   sessionId: string;
   messageCount: number;
   thinking: boolean;
+  backend?: "ollama" | "mlx";
+  mcpServerActive?: boolean;
 }
 
 const API_BASE = "http://127.0.0.1:8000";
@@ -33,7 +61,7 @@ export function useAgent() {
     connected: false,
     ollama: false,
     libraryBrain: false,
-    model: "qwen2.5-coder:32b",
+    model: "",
     sessionId: "",
     messageCount: 0,
     thinking: false,
@@ -41,34 +69,57 @@ export function useAgent() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [memories, setMemories] = useState<MemoryEntry[]>([]);
+  const [projectInfo, setProjectInfo] = useState<ProjectInfo>({
+    conventions: [],
+    recurrent_errors: [],
+  });
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Flag : true quand l'app se démonte volontairement (cleanup useEffect).
+  // Empêche ws.onclose de re-déclencher un reconnect inutile.
+  const isUnmounting = useRef(false);
 
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+  const fetchStatus = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/api/status`);
+      const data = await r.json();
+      setStatus(s => ({
+        ...s,
+        ollama: data.ollama,
+        libraryBrain: data.librarybrain?.up ?? false,
+        model: data.model || s.model,
+        backend: data.backend,
+        mcpServerActive: data.mcp_server_active,
+      }));
+      setAvailableModels(data.models ?? []);
+      if (data.project_info) {
+        setProjectInfo(data.project_info);
+      }
+    } catch {
+      setStatus(s => ({ ...s, ollama: false }));
+    }
+  }, []);
 
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
+  const fetchSessions = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/api/sessions`);
+      setSessions(await r.json());
+    } catch {}
+  }, []);
 
-    ws.onopen = () => {
-      setStatus(s => ({ ...s, connected: true }));
-      fetchStatus();
-      fetchSessions();
-      fetchMemories();
-    };
+  const fetchMemories = useCallback(async () => {
+    try {
+      const r = await fetch(`${API_BASE}/api/memories`);
+      setMemories(await r.json());
+    } catch {}
+  }, []);
 
-    ws.onclose = () => {
-      setStatus(s => ({ ...s, connected: false, thinking: false }));
-      reconnectTimer.current = setTimeout(connect, 3000);
-    };
-
-    ws.onerror = () => ws.close();
-
-    ws.onmessage = (e) => {
-      const event = JSON.parse(e.data);
-      handleEvent(event);
-    };
+  const forgetMemory = useCallback(async (key: string) => {
+    try {
+      await fetch(`${API_BASE}/api/memories/${encodeURIComponent(key)}`, { method: "DELETE" });
+      setMemories(prev => prev.filter(m => m.key !== key));
+    } catch {}
   }, []);
 
   const handleEvent = useCallback((event: Record<string, unknown>) => {
@@ -97,7 +148,6 @@ export function useAgent() {
       case "token":
         setMessages(prev => {
           const last = prev[prev.length - 1];
-          // Accumuler dans le message streaming en cours, ou en créer un
           if (last?.role === "assistant" && last.streaming) {
             return [
               ...prev.slice(0, -1),
@@ -122,6 +172,27 @@ export function useAgent() {
         setStatus(s => ({ ...s, thinking: false }));
         break;
 
+      case "message_stats":
+        // Attache les stats au dernier message assistant non-streaming
+        setMessages(prev => {
+          for (let i = prev.length - 1; i >= 0; i--) {
+            if (prev[i].role === "assistant" && !prev[i].streaming) {
+              const updated = [...prev];
+              updated[i] = {
+                ...prev[i],
+                stats: {
+                  latency_s: event.latency_s as number,
+                  tokens: event.tokens as number,
+                  model: event.model as string | undefined,
+                },
+              };
+              return updated;
+            }
+          }
+          return prev;
+        });
+        break;
+
       case "discard_stream":
         setMessages(prev => {
           const last = prev[prev.length - 1];
@@ -133,7 +204,6 @@ export function useAgent() {
         break;
 
       case "stream_trim":
-        // Texte + JSON mélangés : garder uniquement la partie texte
         setMessages(prev => {
           const last = prev[prev.length - 1];
           if (last?.role === "assistant" && last.streaming) {
@@ -179,6 +249,58 @@ export function useAgent() {
         ]);
         break;
 
+      // ── v2 events ────────────────────────────────────────────────────
+      case "router_decision":
+        setMessages(prev => [
+          ...prev,
+          {
+            id: uid(),
+            role: "router",
+            content: "",
+            router: event.decision as RouterDecision,
+          },
+        ]);
+        break;
+
+      case "sandbox_check":
+        setMessages(prev => [
+          ...prev,
+          {
+            id: uid(),
+            role: "sandbox",
+            content: "",
+            sandbox: event.check as SandboxCheck,
+          },
+        ]);
+        break;
+
+      case "best_of_n":
+        setMessages(prev => [
+          ...prev,
+          {
+            id: uid(),
+            role: "best_of_n",
+            content: "",
+            bestOfN: event.result as BestOfNResult,
+          },
+        ]);
+        break;
+
+      case "conventions_loaded":
+        setProjectInfo(prev => ({
+          ...prev,
+          conventions: (event.conventions as ProjectInfo["conventions"]) ?? [],
+          workdir: event.workdir as string | undefined,
+        }));
+        break;
+
+      case "recurrent_errors":
+        setProjectInfo(prev => ({
+          ...prev,
+          recurrent_errors: (event.errors as ProjectInfo["recurrent_errors"]) ?? [],
+        }));
+        break;
+
       case "done":
         setStatus(s => ({ ...s, thinking: false }));
         fetchSessions();
@@ -206,44 +328,36 @@ export function useAgent() {
         setStatus(s => ({ ...s, model: event.model as string }));
         break;
     }
-  }, []);
+  }, [fetchSessions, fetchMemories]);
 
-  const fetchStatus = useCallback(async () => {
-    try {
-      const r = await fetch(`${API_BASE}/api/status`);
-      const data = await r.json();
-      setStatus(s => ({
-        ...s,
-        ollama: data.ollama,
-        libraryBrain: data.librarybrain?.up ?? false,
-        model: data.model,
-      }));
-      setAvailableModels(data.models ?? []);
-    } catch {
-      setStatus(s => ({ ...s, ollama: false }));
-    }
-  }, []);
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-  const fetchSessions = useCallback(async () => {
-    try {
-      const r = await fetch(`${API_BASE}/api/sessions`);
-      setSessions(await r.json());
-    } catch {}
-  }, []);
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
 
-  const fetchMemories = useCallback(async () => {
-    try {
-      const r = await fetch(`${API_BASE}/api/memories`);
-      setMemories(await r.json());
-    } catch {}
-  }, []);
+    ws.onopen = () => {
+      setStatus(s => ({ ...s, connected: true }));
+      fetchStatus();
+      fetchSessions();
+      fetchMemories();
+    };
 
-  const forgetMemory = useCallback(async (key: string) => {
-    try {
-      await fetch(`${API_BASE}/api/memories/${encodeURIComponent(key)}`, { method: "DELETE" });
-      setMemories(prev => prev.filter(m => m.key !== key));
-    } catch {}
-  }, []);
+    ws.onclose = () => {
+      setStatus(s => ({ ...s, connected: false, thinking: false }));
+      // Ne reconnect PAS si l'app se démonte volontairement (cleanup useEffect)
+      if (!isUnmounting.current) {
+        reconnectTimer.current = setTimeout(connect, 3000);
+      }
+    };
+
+    ws.onerror = () => ws.close();
+
+    ws.onmessage = (e) => {
+      const event = JSON.parse(e.data);
+      handleEvent(event);
+    };
+  }, [fetchStatus, fetchSessions, fetchMemories, handleEvent]);
 
   const sendMessage = useCallback((content: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
@@ -272,6 +386,7 @@ export function useAgent() {
   }, []);
 
   useEffect(() => {
+    isUnmounting.current = false;
     connect();
     const ping = setInterval(() => {
       wsRef.current?.send(JSON.stringify({ type: "ping" }));
@@ -279,6 +394,7 @@ export function useAgent() {
     }, 15000);
 
     return () => {
+      isUnmounting.current = true;
       clearInterval(ping);
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
@@ -291,6 +407,7 @@ export function useAgent() {
     sessions,
     availableModels,
     memories,
+    projectInfo,
     sendMessage,
     changeModel,
     newSession,

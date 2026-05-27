@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { colors, radii, shadows } from "../theme";
 
 interface Props {
   disabled: boolean;
@@ -80,18 +81,28 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
   return (
     <div
       style={{
-        borderTop: "1px solid #2a2d45",
-        padding: "12px 16px",
-        background: "#0d0e16",
+        borderTop: `1px solid ${colors.border}`,
+        padding: "14px 18px",
+        background: colors.bgAlt,
         display: "flex",
         flexDirection: "column",
         gap: "8px",
         flexShrink: 0,
       }}
     >
-      {/* File error */}
+      {/* File error — Bootstrap-like alert */}
       {fileError && (
-        <div style={{ color: "#f87171", fontSize: "11px", padding: "4px 2px" }}>
+        <div
+          role="alert"
+          style={{
+            background: colors.dangerSoft,
+            color: colors.dangerText,
+            border: `1px solid ${colors.danger}`,
+            fontSize: "12px",
+            padding: "6px 10px",
+            borderRadius: radii.md,
+          }}
+        >
           ⚠ {fileError}
         </div>
       )}
@@ -104,17 +115,17 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              background: "#1a1b28",
-              border: "1px solid #2a2d45",
-              borderRadius: "6px",
-              padding: "4px 10px",
-              fontSize: "11px",
-              color: "#94a3b8",
+              background: colors.accentCyanSoft,
+              border: `1px solid ${colors.accentCyan}55`,
+              borderRadius: radii.pill,
+              padding: "4px 12px",
+              fontSize: "12px",
+              color: colors.text,
             }}
           >
-            <span style={{ color: "#22d3ee" }}>📄</span>
-            <span>{attachment.name}</span>
-            <span style={{ color: "#475569" }}>
+            <span style={{ color: colors.accentCyan }}>📄</span>
+            <span style={{ fontWeight: 500 }}>{attachment.name}</span>
+            <span style={{ color: colors.textMuted }}>
               ({Math.round(attachment.content.length / 1024 * 10) / 10} Ko)
             </span>
             <button
@@ -122,9 +133,9 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
               style={{
                 background: "none",
                 border: "none",
-                color: "#475569",
+                color: colors.textMuted,
                 cursor: "pointer",
-                fontSize: "12px",
+                fontSize: "13px",
                 padding: "0 0 0 4px",
                 lineHeight: 1,
               }}
@@ -138,7 +149,6 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
 
       {/* Input row */}
       <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
-        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -147,36 +157,36 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
           style={{ display: "none" }}
         />
 
-        {/* Attach button */}
+        {/* Attach button — Bootstrap-like secondary outline */}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || thinking}
           title="Joindre un fichier (texte, code, …)"
           style={{
-            background: "transparent",
-            border: "1px solid #2a2d45",
-            borderRadius: "8px",
-            color: attachment ? "#22d3ee" : "#475569",
+            background: colors.bg,
+            border: `1px solid ${colors.borderStrong}`,
+            borderRadius: radii.md,
+            color: attachment ? colors.accentCyan : colors.textMuted,
             fontSize: "16px",
-            width: "40px",
-            height: "40px",
+            width: "42px",
+            height: "42px",
             cursor: disabled || thinking ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            transition: "border-color 0.15s, color 0.15s",
+            transition: "all 0.15s",
             opacity: disabled || thinking ? 0.4 : 1,
           }}
           onMouseEnter={(e) => {
             if (!disabled && !thinking) {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "#22d3ee55";
-              (e.currentTarget as HTMLButtonElement).style.color = "#22d3ee";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = colors.primary;
+              (e.currentTarget as HTMLButtonElement).style.color = colors.primary;
             }
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.borderColor = "#2a2d45";
-            (e.currentTarget as HTMLButtonElement).style.color = attachment ? "#22d3ee" : "#475569";
+            (e.currentTarget as HTMLButtonElement).style.borderColor = colors.borderStrong;
+            (e.currentTarget as HTMLButtonElement).style.color = attachment ? colors.accentCyan : colors.textMuted;
           }}
         >
           📎
@@ -188,49 +198,57 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder={disabled ? "Klody réfléchit…" : "Message… (Entrée pour envoyer, Shift+Entrée pour saut de ligne)"}
+          placeholder={disabled ? "Klody réfléchit…" : "Message…  (Entrée pour envoyer, Shift+Entrée pour saut de ligne)"}
           rows={1}
           style={{
             flex: 1,
-            background: "#13141f",
-            border: "1px solid #2a2d45",
-            borderRadius: "8px",
-            color: "#cbd5e1",
+            background: colors.bg,
+            border: `1px solid ${colors.borderStrong}`,
+            borderRadius: radii.md,
+            color: colors.text,
             fontSize: "13px",
             padding: "10px 14px",
             resize: "none",
             outline: "none",
             fontFamily: "inherit",
             lineHeight: "1.5",
-            transition: "border-color 0.15s",
-            minHeight: "40px",
+            transition: "all 0.15s",
+            minHeight: "42px",
             maxHeight: "160px",
             opacity: disabled ? 0.5 : 1,
+            boxShadow: "none",
           }}
-          onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "#22d3ee55"; }}
-          onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = "#2a2d45"; }}
+          onFocus={(e) => {
+            (e.target as HTMLTextAreaElement).style.borderColor = colors.primary;
+            (e.target as HTMLTextAreaElement).style.boxShadow = shadows.focus;
+          }}
+          onBlur={(e) => {
+            (e.target as HTMLTextAreaElement).style.borderColor = colors.borderStrong;
+            (e.target as HTMLTextAreaElement).style.boxShadow = "none";
+          }}
         />
 
         {thinking ? (
           <button
             onClick={onStop}
             style={{
-              background: "rgba(239,68,68,0.15)",
-              border: "1px solid rgba(239,68,68,0.4)",
-              borderRadius: "8px",
-              color: "#f87171",
-              fontSize: "14px",
-              width: "40px",
-              height: "40px",
+              background: colors.danger,
+              border: "none",
+              borderRadius: radii.md,
+              color: colors.textInvert,
+              fontSize: "16px",
+              width: "42px",
+              height: "42px",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
               transition: "background 0.15s",
+              fontWeight: 700,
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.28)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(239,68,68,0.15)"; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#b02a37"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = colors.danger; }}
             title="Arrêter la génération"
           >
             ■
@@ -240,13 +258,13 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
             onClick={submit}
             disabled={!canSend}
             style={{
-              background: canSend ? "#f59e0b" : "#1a1b28",
+              background: canSend ? colors.primary : colors.bgMuted,
               border: "none",
-              borderRadius: "8px",
-              color: canSend ? "#0a0b0f" : "#475569",
+              borderRadius: radii.md,
+              color: canSend ? colors.textInvert : colors.textSoft,
               fontSize: "16px",
-              width: "40px",
-              height: "40px",
+              width: "42px",
+              height: "42px",
               cursor: canSend ? "pointer" : "not-allowed",
               display: "flex",
               alignItems: "center",
@@ -254,6 +272,12 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
               flexShrink: 0,
               transition: "background 0.15s",
               fontWeight: 700,
+            }}
+            onMouseEnter={(e) => {
+              if (canSend) (e.currentTarget as HTMLButtonElement).style.background = colors.primaryHover;
+            }}
+            onMouseLeave={(e) => {
+              if (canSend) (e.currentTarget as HTMLButtonElement).style.background = colors.primary;
             }}
             title="Envoyer (Entrée)"
           >

@@ -1,24 +1,38 @@
 @import "tailwindcss";
 
+/* ── Klody UI — palette "exposition longue" warm (sync src/theme.ts) ──────── */
 @theme {
-  --color-space-950: #07080d;
-  --color-space-900: #0d0e16;
-  --color-space-800: #13141f;
-  --color-space-700: #1a1b28;
-  --color-space-600: #22253a;
-  --color-space-500: #2e3150;
-  --color-border: #2a2d45;
-  --color-cyan-400: #22d3ee;
-  --color-cyan-300: #67e8f9;
-  --color-violet-500: #8b5cf6;
-  --color-violet-400: #a78bfa;
-  --color-green-400: #34d399;
-  --color-amber-400: #fbbf24;
-  --color-red-400: #f87171;
-  --color-slate-300: #cbd5e1;
-  --color-slate-400: #94a3b8;
-  --color-slate-500: #64748b;
+  /* Backgrounds — lin / crème / ivoire */
+  --color-bg: #f7f3eb;
+  --color-bg-alt: #ede6d6;
+  --color-bg-muted: #e1d8c4;
+  --color-bg-surface: #fbf8f2;
 
+  /* Text — terre brûlée */
+  --color-text: #3d3530;
+  --color-text-muted: #7a6f63;
+  --color-text-soft: #a89e91;
+  --color-text-invert: #fbf8f2;
+
+  /* Borders — warm gray */
+  --color-border: #d9d0c3;
+  --color-border-strong: #c4b9a7;
+  --color-border-soft: #e3dccd;
+
+  /* Status — palette warm low-saturation */
+  --color-primary: #a87651;
+  --color-primary-hover: #8e5e3f;
+  --color-success: #7a8b5a;
+  --color-warning: #c2922c;
+  --color-danger: #a85a4f;
+  --color-info: #5d7c7b;
+
+  /* Identity accents (warm) */
+  --color-violet: #8e7081;
+  --color-cyan: #6b8e8b;
+  --color-amber: #a8772d;
+
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 }
 
@@ -30,20 +44,30 @@ html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: var(--color-space-950);
-  color: var(--color-slate-300);
-  font-family: var(--font-mono);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar cosmique */
-::-webkit-scrollbar { width: 4px; }
+/* Scrollbar discrète, tons warm */
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-space-600); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-space-500); }
+::-webkit-scrollbar-thumb {
+  background: #c4b9a7;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a89e91;
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
 
-/* Curseur clignotant pour streaming */
+/* Curseur clignotant — couleur primary terra */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
@@ -51,15 +75,25 @@ html, body, #root {
 .cursor-blink::after {
   content: "▋";
   animation: blink 1s step-start infinite;
-  color: var(--color-amber-400);
+  color: var(--color-primary);
   margin-left: 1px;
 }
 
-/* Pulse doux pour l'état "thinking" */
+/* Pulse "thinking" */
 @keyframes pulse-glow {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
 }
 .thinking-dot {
   animation: pulse-glow 1.2s ease-in-out infinite;
+}
+
+/* Focus accessible — anneau terra warm */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
