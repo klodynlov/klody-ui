@@ -1,8 +1,8 @@
 [package]
 name = "klody-ui"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+version = "2.1.0"
+description = "Klody AI desktop UI (Tauri 2 + React 19)"
+authors = ["klodynlov"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
