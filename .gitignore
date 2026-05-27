@@ -6,3 +6,8 @@ src-tauri/target/
 
 # Claude Code worktrees / state
 .claude/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
