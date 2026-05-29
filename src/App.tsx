@@ -1,11 +1,13 @@
 import "./index.css";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAgent } from "./hooks/useAgent";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { ChatPanel } from "./components/ChatPanel";
 import { InputBar } from "./components/InputBar";
 import { colors } from "./theme";
+
+type SidebarTab = "sessions" | "memory" | "project";
 
 export default function App() {
   const {
@@ -21,7 +23,61 @@ export default function App() {
     loadSession,
     stopGeneration,
     forgetMemory,
+    addMemory,
+    fetchSkills,
+    notify,
   } = useAgent();
+
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("sessions");
+
+  // Exécution des commandes "/" (famille Mémoire & projet) — actions
+  // déterministes via REST/onglets, sans round-trip LLM.
+  const handleCommand = useCallback(
+    async (name: string, args: string) => {
+      switch (name) {
+        case "remember": {
+          const t = args.trim();
+          const sp = t.indexOf(" ");
+          const content = sp >= 1 ? t.slice(sp + 1).trim() : "";
+          if (sp < 1 || !content) {
+            notify("⚠ Usage : /remember <clé> <fait…>");
+            return;
+          }
+          const res = await addMemory(t.slice(0, sp), content);
+          notify(res.ok ? `✓ ${res.message}` : `⚠ ${res.message}`);
+          setSidebarTab("memory");
+          break;
+        }
+        case "forget": {
+          const key = args.trim();
+          if (!key) {
+            notify("⚠ Usage : /forget <clé>");
+            return;
+          }
+          await forgetMemory(key);
+          notify(`✓ Oublié : ${key}`);
+          setSidebarTab("memory");
+          break;
+        }
+        case "skills": {
+          const list = await fetchSkills();
+          if (list.length === 0) {
+            notify("Aucune compétence enregistrée.");
+            break;
+          }
+          const lines = list
+            .map(s => `- **${s.name}** (\`${s.slug}\`) — ${s.description}`)
+            .join("\n");
+          notify(`**${list.length} compétence(s) :**\n${lines}`);
+          break;
+        }
+        case "project":
+          setSidebarTab("project");
+          break;
+      }
+    },
+    [addMemory, forgetMemory, fetchSkills, notify],
+  );
 
   // Cmd+K (Mac) / Ctrl+K → nouvelle session
   useEffect(() => {
@@ -64,6 +120,8 @@ export default function App() {
             model: status.model,
             mcp_server_active: status.mcpServerActive,
           }}
+          tab={sidebarTab}
+          onTabChange={setSidebarTab}
           onLoad={loadSession}
           onForget={forgetMemory}
         />
@@ -111,6 +169,7 @@ export default function App() {
             thinking={status.thinking}
             onSend={sendMessage}
             onStop={stopGeneration}
+            onCommand={handleCommand}
           />
         </main>
       </div>

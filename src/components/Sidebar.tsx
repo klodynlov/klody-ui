@@ -20,17 +20,20 @@ const CATEGORY_COLORS: Record<string, string> = {
   context: colors.textMuted,
 };
 
+type SidebarTab = "sessions" | "memory" | "project";
+
 interface Props {
   sessions: SessionSummary[];
   currentSessionId: string;
   memories: MemoryEntry[];
   projectInfo: ProjectInfo;
+  tab: SidebarTab;
+  onTabChange: (t: SidebarTab) => void;
   onLoad: (id: string) => void;
   onForget: (key: string) => void;
 }
 
-export function Sidebar({ sessions, currentSessionId, memories, projectInfo, onLoad, onForget }: Props) {
-  const [tab, setTab] = useState<"sessions" | "memory" | "project">("sessions");
+export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab, onTabChange, onLoad, onForget }: Props) {
   const [search, setSearch] = useState("");
   const fmtLabel = (ts: number) => {
     const d = new Date(ts * 1000);
@@ -76,7 +79,7 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, onL
           return (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => onTabChange(t)}
               style={{
                 flex: 1,
                 background: active ? colors.bgAlt : "transparent",

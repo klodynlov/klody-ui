@@ -69,6 +69,7 @@ export function useAgent() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [memories, setMemories] = useState<MemoryEntry[]>([]);
+  const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [projectInfo, setProjectInfo] = useState<ProjectInfo>({
     conventions: [],
     recurrent_errors: [],
@@ -118,8 +119,45 @@ export function useAgent() {
   const forgetMemory = useCallback(async (key: string) => {
     try {
       await fetch(`${API_BASE}/api/memories/${encodeURIComponent(key)}`, { method: "DELETE" });
+      // Retrait optimiste immédiat…
       setMemories(prev => prev.filter(m => m.key !== key));
+      // …puis réconciliation (le backend normalise la clé : casse/espaces).
+      fetchMemories();
     } catch {}
+  }, [fetchMemories]);
+
+  const addMemory = useCallback(
+    async (key: string, content: string, category: MemoryEntry["category"] = "context") => {
+      try {
+        const r = await fetch(`${API_BASE}/api/memories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key, content, category }),
+        });
+        const data = (await r.json()) as { ok: boolean; message: string };
+        fetchMemories();
+        return data;
+      } catch {
+        return { ok: false, message: "Échec réseau (backend injoignable ?)" };
+      }
+    },
+    [fetchMemories],
+  );
+
+  const fetchSkills = useCallback(async (): Promise<SkillEntry[]> => {
+    try {
+      const r = await fetch(`${API_BASE}/api/skills`);
+      const data = (await r.json()) as SkillEntry[];
+      setSkills(data);
+      return data;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  // Message UI-only (retour de commande "/") — non envoyé au backend.
+  const notify = useCallback((content: string) => {
+    setMessages(prev => [...prev, { id: uid(), role: "assistant", content }]);
   }, []);
 
   const handleEvent = useCallback((event: Record<string, unknown>) => {
@@ -407,6 +445,7 @@ export function useAgent() {
     sessions,
     availableModels,
     memories,
+    skills,
     projectInfo,
     sendMessage,
     changeModel,
@@ -414,6 +453,9 @@ export function useAgent() {
     loadSession,
     stopGeneration,
     forgetMemory,
+    addMemory,
+    fetchSkills,
+    notify,
   };
 }
 
@@ -430,4 +472,12 @@ export interface SessionSummary {
   messages: number;
   modified: number;
   preview: string;
+}
+
+export interface SkillEntry {
+  name: string;
+  slug: string;
+  description: string;
+  content: string;
+  updated: string;
 }

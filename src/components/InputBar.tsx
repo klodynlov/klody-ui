@@ -1,27 +1,68 @@
 import { useCallback, useRef, useState } from "react";
 import { colors, radii, shadows } from "../theme";
+import { SlashMenu } from "./SlashMenu";
+import { slashQuery, filterCommands, parseCommand, type SlashCommand } from "../slashCommands";
 
 interface Props {
   disabled: boolean;
   thinking: boolean;
   onSend: (text: string) => void;
   onStop: () => void;
+  onCommand: (name: string, args: string) => void;
 }
 
 const MAX_FILE_SIZE = 50 * 1024; // 50 KB
 
 const ACCEPTED_EXTENSIONS = ".py,.js,.ts,.tsx,.jsx,.md,.txt,.json,.yaml,.yml,.toml,.rs,.go,.sh,.bash,.zsh,.css,.html,.xml,.sql,.env,.cfg,.ini,.log";
 
-export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
+export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Props) {
   const [text, setText] = useState("");
   const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Menu "/" : visible tant qu'on tape le nom de commande (slash + token) ──
+  const slashFilter = slashQuery(text);
+  const filtered = slashFilter !== null ? filterCommands(slashFilter) : [];
+  const menuVisible = !disabled && !dismissed && slashFilter !== null && filtered.length > 0;
+  const safeIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
+
+  const resetInput = useCallback(() => {
+    setText("");
+    setDismissed(false);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  }, []);
+
+  const selectCommand = useCallback((cmd: SlashCommand) => {
+    if (cmd.takesArgs) {
+      // On pré-remplit "/cmd " : l'utilisateur tape ensuite les arguments.
+      setText(`/${cmd.name} `);
+      setActiveIndex(0);
+      textareaRef.current?.focus();
+    } else {
+      onCommand(cmd.name, "");
+      resetInput();
+    }
+  }, [onCommand, resetInput]);
+
   const submit = useCallback(() => {
+    if (disabled) return;
     const trimmed = text.trim();
-    if ((!trimmed && !attachment) || disabled) return;
+
+    // Commande "/" connue → exécution déterministe (pas d'envoi au LLM).
+    const parsed = parseCommand(trimmed);
+    if (parsed) {
+      onCommand(parsed.name, parsed.args);
+      setAttachment(null);
+      setFileError(null);
+      resetInput();
+      return;
+    }
+
+    if (!trimmed && !attachment) return;
 
     let finalMessage = trimmed;
     if (attachment) {
@@ -37,9 +78,31 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [text, attachment, disabled, onSend]);
+  }, [text, attachment, disabled, onSend, onCommand, resetInput]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (menuVisible) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex(i => (i + 1) % filtered.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex(i => (i - 1 + filtered.length) % filtered.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        selectCommand(filtered[safeIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setDismissed(true);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
@@ -48,6 +111,8 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
+    setDismissed(false);
+    setActiveIndex(0);
     const el = e.target;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
@@ -148,7 +213,15 @@ export function InputBar({ disabled, thinking, onSend, onStop }: Props) {
       )}
 
       {/* Input row */}
-      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
+      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", position: "relative" }}>
+        {menuVisible && (
+          <SlashMenu
+            commands={filtered}
+            activeIndex={safeIndex}
+            onSelect={selectCommand}
+            onHover={setActiveIndex}
+          />
+        )}
         <input
           ref={fileInputRef}
           type="file"
