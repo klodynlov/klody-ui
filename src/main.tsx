@@ -1,3 +1,4 @@
+import "./theme-mode"; // applique le thème (clair/sombre/auto) avant le 1er rendu
 import ReactDOM from "react-dom/client";
 import App from "./App";
 

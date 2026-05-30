@@ -1,11 +1,18 @@
 @import "tailwindcss";
 
-/* ── Klody UI — palette "exposition longue" warm (sync src/theme.ts) ──────── */
+/* ── Klody UI — palette "exposition longue" warm (sync src/theme.ts) ──────────
+ *
+ * Valeurs CLAIRES par défaut (@theme → :root). Les variantes SOMBRES sont des
+ * overrides sous [data-theme="dark"] (cf. src/theme-mode.ts qui pose l'attribut
+ * sur <html> : "light" | "dark", résolu depuis le choix utilisateur ou l'OS).
+ * theme.ts expose ces couleurs via var(--…), donc les styles inline suivent.
+ * ────────────────────────────────────────────────────────────────────────── */
 @theme {
   /* Backgrounds — lin / crème / ivoire */
   --color-bg: #f7f3eb;
   --color-bg-alt: #ede6d6;
   --color-bg-muted: #e1d8c4;
+  --color-bg-hover: #ebe3d2;
   --color-bg-surface: #fbf8f2;
 
   /* Text — terre brûlée */
@@ -22,18 +29,103 @@
   /* Status — palette warm low-saturation */
   --color-primary: #a87651;
   --color-primary-hover: #8e5e3f;
+  --color-primary-soft: #f0e2d4;
+  --color-primary-text: #5e3f29;
+
   --color-success: #7a8b5a;
+  --color-success-soft: #e3e8d4;
+  --color-success-text: #475134;
+
   --color-warning: #c2922c;
+  --color-warning-soft: #f4e8c8;
+  --color-warning-text: #6b4f1a;
+
   --color-danger: #a85a4f;
+  --color-danger-soft: #efd7d1;
+  --color-danger-text: #5f2d24;
+
   --color-info: #5d7c7b;
+  --color-info-soft: #d6e0df;
+  --color-info-text: #33474b;
 
   /* Identity accents (warm) */
-  --color-violet: #8e7081;
-  --color-cyan: #6b8e8b;
-  --color-amber: #a8772d;
+  --color-accent-violet: #8e7081;
+  --color-accent-violet-soft: #ebe0e3;
+  --color-accent-cyan: #6b8e8b;
+  --color-accent-cyan-soft: #d8e3e1;
+  --color-accent-amber: #a8772d;
+  --color-accent-amber-soft: #f4e6cc;
+
+  /* Ombres — warm, douces */
+  --shadow-sm: 0 1px 2px 0 rgba(120, 90, 60, 0.05);
+  --shadow-md: 0 1px 3px 0 rgba(120, 90, 60, 0.08), 0 1px 2px -1px rgba(120, 90, 60, 0.06);
+  --shadow-lg: 0 4px 8px -2px rgba(120, 90, 60, 0.10), 0 2px 4px -2px rgba(120, 90, 60, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(168, 118, 81, 0.22);
 
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+/* ── Variante SOMBRE — même âme warm, version "nuit" (espresso/sépia) ───────── */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Backgrounds — espresso → café */
+  --color-bg: #1a1714;
+  --color-bg-alt: #221d18;
+  --color-bg-muted: #2e2720;
+  --color-bg-hover: #2a241e;
+  --color-bg-surface: #241f1a;
+
+  /* Text — ivoire chaud */
+  --color-text: #e9e0d2;
+  --color-text-muted: #b0a491;
+  --color-text-soft: #82776a;
+  --color-text-invert: #f5ede0;
+
+  /* Borders — warm dark */
+  --color-border: #36302a;
+  --color-border-strong: #4a4037;
+  --color-border-soft: #2c2620;
+
+  /* Status — éclaircies pour le contraste sur fond sombre */
+  --color-primary: #c08a62;
+  --color-primary-hover: #d49b72;
+  --color-primary-soft: #3a2c20;
+  --color-primary-text: #e7bf9d;
+
+  --color-success: #97ab70;
+  --color-success-soft: #2a3019;
+  --color-success-text: #c3d3a0;
+
+  --color-warning: #d6a73f;
+  --color-warning-soft: #362b13;
+  --color-warning-text: #e6c685;
+
+  --color-danger: #c5746a;
+  --color-danger-soft: #38221d;
+  --color-danger-text: #e8a89c;
+
+  --color-info: #7fa3a1;
+  --color-info-soft: #1e2e2d;
+  --color-info-text: #a6c6c4;
+
+  --color-accent-violet: #b18ea1;
+  --color-accent-violet-soft: #2f2730;
+  --color-accent-cyan: #8ab1ae;
+  --color-accent-cyan-soft: #213130;
+  --color-accent-amber: #c89b4e;
+  --color-accent-amber-soft: #362a15;
+
+  /* Ombres — basées sur le noir, plus marquées */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 4px 8px -2px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-focus: 0 0 0 3px rgba(192, 138, 98, 0.30);
 }
 
 * {
@@ -52,17 +144,22 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar discrète, tons warm */
+/* Transition douce lors du basculement de thème */
+html, body {
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Scrollbar discrète, tons warm (suit le thème) */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #c4b9a7;
+  background: var(--color-border-strong);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #a89e91;
+  background: var(--color-text-soft);
   background-clip: padding-box;
   border: 2px solid transparent;
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SessionSummary, MemoryEntry } from "../hooks/useAgent";
-import { colors, radii } from "../theme";
+import { alpha, colors, radii } from "../theme";
 import { ProjectPanel } from "./v2";
 import type { ProjectInfo } from "./v2";
 
@@ -125,7 +125,7 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab
             }}
             onFocus={e => {
               (e.target as HTMLInputElement).style.borderColor = colors.primary;
-              (e.target as HTMLInputElement).style.boxShadow = `0 0 0 3px ${colors.primary}22`;
+              (e.target as HTMLInputElement).style.boxShadow = `0 0 0 3px ${alpha(colors.primary, 13)}`;
             }}
             onBlur={e => {
               (e.target as HTMLInputElement).style.borderColor = colors.borderStrong;

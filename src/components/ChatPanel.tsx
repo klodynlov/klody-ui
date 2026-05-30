@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import type { ChatMessage, AgentStatus } from "../hooks/useAgent";
-import { colors, radii, shadows, fonts } from "../theme";
+import { alpha, colors, radii, shadows, fonts } from "../theme";
 import { RouterChip, SandboxCard, BestOfNDrawer } from "./v2";
 
 // ── Code block avec numéros de ligne et bouton Copier ─────────────────────────
@@ -315,7 +315,7 @@ function ToolResultCard({ msg }: { msg: ChatMessage }) {
               textDecoration: "none",
               padding: "6px 12px",
               background: colors.primarySoft,
-              border: `1px solid ${colors.primary}55`,
+              border: `1px solid ${alpha(colors.primary, 33)}`,
               borderRadius: radii.md,
             }}
           >
@@ -469,7 +469,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
               padding: "12px 16px",
               borderRadius: "14px 14px 4px 14px",
               background: colors.primarySoft,
-              border: `1px solid ${colors.primary}55`,
+              border: `1px solid ${alpha(colors.primary, 33)}`,
               color: colors.text,
               fontSize: "13.5px",
               lineHeight: "1.6",

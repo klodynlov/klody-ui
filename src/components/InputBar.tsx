@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { colors, radii, shadows } from "../theme";
+import { alpha, colors, radii, shadows } from "../theme";
 import { SlashMenu } from "./SlashMenu";
 import { slashQuery, filterCommands, parseCommand, type SlashCommand } from "../slashCommands";
 
@@ -181,7 +181,7 @@ export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Prop
               alignItems: "center",
               gap: "6px",
               background: colors.accentCyanSoft,
-              border: `1px solid ${colors.accentCyan}55`,
+              border: `1px solid ${alpha(colors.accentCyan, 33)}`,
               borderRadius: radii.pill,
               padding: "4px 12px",
               fontSize: "12px",

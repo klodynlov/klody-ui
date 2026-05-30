@@ -1,5 +1,6 @@
 import type { AgentStatus } from "../hooks/useAgent";
-import { colors, radii, shadows } from "../theme";
+import { alpha, colors, radii, shadows } from "../theme";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface Props {
   status: AgentStatus;
@@ -22,7 +23,7 @@ function StatusDot({ active, label, color = colors.success }: { active: boolean;
           height: "7px",
           borderRadius: radii.pill,
           background: active ? color : colors.textSoft,
-          boxShadow: active ? `0 0 0 3px ${color}22` : "none",
+          boxShadow: active ? `0 0 0 3px ${alpha(color, 13)}` : "none",
           transition: "all 0.15s",
         }}
       />
@@ -86,6 +87,9 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
                  label={status.backend === "mlx" ? "MLX" : "Ollama"}
                  color={status.backend === "mlx" ? colors.primary : colors.success} />
       <StatusDot active={status.libraryBrain} label="📚 LibraryBrain" color={colors.accentViolet} />
+
+      {/* Sélecteur de thème clair / auto / sombre */}
+      <ThemeToggle />
 
       {/* Model selector — Bootstrap-like select compact */}
       {availableModels.length > 1 ? (
@@ -169,7 +173,7 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
           height: "8px",
           borderRadius: radii.pill,
           background: status.connected ? colors.success : colors.danger,
-          boxShadow: status.connected ? `0 0 0 3px ${colors.success}22` : `0 0 0 3px ${colors.danger}22`,
+          boxShadow: status.connected ? `0 0 0 3px ${alpha(colors.success, 13)}` : `0 0 0 3px ${alpha(colors.danger, 13)}`,
           transition: "all 0.15s",
         }}
       />
