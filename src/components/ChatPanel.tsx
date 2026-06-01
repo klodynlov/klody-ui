@@ -530,12 +530,114 @@ function SkillsChip({ skills }: { skills: string[] }) {
   );
 }
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+// ── Carte d'approbation (human-in-the-loop) ─────────────────────────────────
+// Affichée quand le backend demande validation d'une action à effet de bord
+// (execute_command, write_file, …). Montre l'action EN ENTIER (décision-critique)
+// + boutons Autoriser / Refuser. Une fois résolue : badge d'état, plus de boutons.
+
+function ApprovalCard({ msg, onApproval }: { msg: ChatMessage; onApproval: (id: string, approved: boolean) => void }) {
+  const state = msg.approvalState ?? "pending";
+  const id = msg.approvalId ?? "";
+  const args = msg.args ?? {};
+  const reason = msg.content || (typeof args.reason === "string" ? (args.reason as string) : "");
+  const argEntries = Object.entries(args).filter(([k]) => k !== "reason");
+  const pending = state === "pending";
+
+  const badge =
+    state === "approved" ? { txt: "✓ Autorisé", color: colors.successText, bg: colors.successSoft } :
+    state === "denied" ? { txt: "✗ Refusé", color: colors.dangerText, bg: colors.dangerSoft } :
+    state === "timeout" ? { txt: "⏱ Expiré", color: colors.textMuted, bg: colors.bgMuted } :
+    null;
+
+  const btn = {
+    fontFamily: "inherit" as const,
+    fontSize: "12px",
+    fontWeight: 600 as const,
+    padding: "7px 16px",
+    borderRadius: radii.md,
+    cursor: "pointer",
+  };
+
+  return (
+    <div
+      style={{
+        margin: "6px 0 12px 44px",
+        border: `1px solid ${pending ? colors.warning : colors.border}`,
+        borderLeft: `3px solid ${colors.warning}`,
+        borderRadius: radii.md,
+        background: pending ? colors.warningSoft : colors.bgAlt,
+        padding: "12px 14px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: argEntries.length ? "8px" : 0 }}>
+        <span style={{ fontSize: "12.5px", fontWeight: 600, color: pending ? colors.warningText : colors.textMuted }}>
+          {pending ? "⏸ Validation requise" : "Action"}
+          {"  "}
+          <span style={{ fontFamily: fonts.mono, color: colors.accentViolet }}>{msg.name}</span>
+        </span>
+        {badge && (
+          <span style={{ fontSize: "11px", fontWeight: 600, color: badge.color, background: badge.bg, padding: "2px 10px", borderRadius: radii.pill, whiteSpace: "nowrap" }}>
+            {badge.txt}
+          </span>
+        )}
+      </div>
+
+      {argEntries.map(([k, v]) => (
+        <div key={k} style={{ marginBottom: "6px" }}>
+          <div style={{ color: colors.textSoft, fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "3px" }}>{k}</div>
+          <div
+            style={{
+              fontFamily: fonts.mono,
+              fontSize: "11.5px",
+              color: colors.text,
+              background: colors.bg,
+              border: `1px solid ${colors.border}`,
+              borderRadius: radii.sm,
+              padding: "6px 10px",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              maxHeight: "180px",
+              overflowY: "auto",
+            }}
+          >
+            {typeof v === "string" ? v : JSON.stringify(v, null, 2)}
+          </div>
+        </div>
+      ))}
+
+      {reason && (
+        <div style={{ color: colors.textMuted, fontSize: "12px", margin: "8px 0 2px", fontStyle: "italic" }}>
+          {reason}
+        </div>
+      )}
+
+      {pending && (
+        <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+          <button
+            onClick={() => onApproval(id, true)}
+            style={{ ...btn, background: colors.success, color: colors.textInvert, border: `1px solid ${colors.success}` }}
+          >
+            ✓ Autoriser
+          </button>
+          <button
+            onClick={() => onApproval(id, false)}
+            style={{ ...btn, background: colors.bg, color: colors.dangerText, border: `1px solid ${colors.danger}` }}
+          >
+            ✗ Refuser
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageBubble({ msg, onApproval }: { msg: ChatMessage; onApproval: (id: string, approved: boolean) => void }) {
   const isUser = msg.role === "user";
   const isError = msg.role === "error";
 
   if (msg.role === "tool_call") return <ToolCallCard msg={msg} />;
   if (msg.role === "tool_result") return <ToolResultCard msg={msg} />;
+  if (msg.role === "approval") return <ApprovalCard msg={msg} onApproval={onApproval} />;
   if (msg.role === "router" && msg.router) return <RouterChip decision={msg.router} />;
   if (msg.role === "sandbox" && msg.sandbox) return <SandboxCard check={msg.sandbox} />;
   if (msg.role === "best_of_n" && msg.bestOfN) return <BestOfNDrawer result={msg.bestOfN} />;
@@ -720,9 +822,10 @@ interface Props {
   sessions: SessionSummary[];
   onSend: (text: string) => void;
   onLoad: (id: string) => void;
+  onApproval: (id: string, approved: boolean) => void;
 }
 
-export function ChatPanel({ messages, status, sessions, onSend, onLoad }: Props) {
+export function ChatPanel({ messages, status, sessions, onSend, onLoad, onApproval }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef(false);
@@ -774,7 +877,7 @@ export function ChatPanel({ messages, status, sessions, onSend, onLoad }: Props)
           <WelcomeScreen sessions={sessions} onSend={onSend} onLoad={onLoad} />
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} />
+          <MessageBubble key={msg.id} msg={msg} onApproval={onApproval} />
         ))}
         {status.thinking && <ThinkingIndicator />}
         <div ref={bottomRef} />

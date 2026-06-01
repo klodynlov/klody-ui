@@ -16,7 +16,8 @@ export type MessageRole =
   | "router"
   | "sandbox"
   | "best_of_n"
-  | "skills";
+  | "skills"
+  | "approval";
 
 export interface MessageStats {
   latency_s: number;
@@ -40,6 +41,9 @@ export interface ChatMessage {
   bestOfN?: BestOfNResult;
   stats?: MessageStats;
   skills?: string[];
+  // Approbation humaine (human-in-the-loop) — role "approval"
+  approvalId?: string;
+  approvalState?: "pending" | "approved" | "denied" | "timeout";
 }
 
 export interface AgentStatus {
@@ -300,6 +304,34 @@ export function useAgent() {
         ]);
         break;
 
+      // ── Approbation humaine (human-in-the-loop) ──────────────────────
+      case "approval_request":
+        // L'agent attend ta décision : on coupe le spinner et on affiche la carte.
+        setStatus(s => ({ ...s, thinking: false }));
+        setMessages(prev => [
+          ...prev,
+          {
+            id: uid(),
+            role: "approval",
+            content: (event.reason as string) ?? "",
+            name: event.name as string,
+            args: event.args as Record<string, unknown>,
+            approvalId: event.id as string,
+            approvalState: "pending",
+          },
+        ]);
+        break;
+
+      case "approval_timeout":
+        setMessages(prev =>
+          prev.map(m =>
+            m.approvalId === (event.id as string) && m.approvalState === "pending"
+              ? { ...m, approvalState: "timeout" }
+              : m,
+          ),
+        );
+        break;
+
       // ── v2 events ────────────────────────────────────────────────────
       case "router_decision":
         setMessages(prev => [
@@ -434,6 +466,21 @@ export function useAgent() {
     setStatus(s => ({ ...s, thinking: false }));
   }, []);
 
+  // Réponse à une demande d'approbation (human-in-the-loop) : débloque le
+  // thread orchestrator côté backend et marque la carte comme résolue.
+  const respondApproval = useCallback((id: string, approved: boolean) => {
+    wsRef.current?.send(JSON.stringify({ type: "approval_response", id, approved }));
+    setMessages(prev =>
+      prev.map(m =>
+        m.approvalId === id && m.approvalState === "pending"
+          ? { ...m, approvalState: approved ? "approved" : "denied" }
+          : m,
+      ),
+    );
+    // Si autorisé, l'agent reprend (exécute l'action) → on réaffiche le spinner.
+    if (approved) setStatus(s => ({ ...s, thinking: true }));
+  }, []);
+
   const newSession = useCallback(() => {
     setMessages([]);
     wsRef.current?.send(JSON.stringify({ type: "session_new" }));
@@ -496,6 +543,7 @@ export function useAgent() {
     deleteSession,
     renameSession,
     stopGeneration,
+    respondApproval,
     forgetMemory,
     addMemory,
     fetchSkills,

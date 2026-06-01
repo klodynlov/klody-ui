@@ -25,6 +25,7 @@ export default function App() {
     deleteSession,
     renameSession,
     stopGeneration,
+    respondApproval,
     forgetMemory,
     addMemory,
     fetchSkills,
@@ -176,6 +177,7 @@ export default function App() {
             sessions={sessions}
             onSend={sendMessage}
             onLoad={loadSession}
+            onApproval={respondApproval}
           />
           <InputBar
             disabled={!status.connected}
