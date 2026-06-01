@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import type { ChatMessage, AgentStatus } from "../hooks/useAgent";
 import { alpha, colors, radii, shadows, fonts } from "../theme";
+import { highlightToLines, colorOf, isComment } from "../syntax";
 import { RouterChip, SandboxCard, BestOfNDrawer } from "./v2";
 
 // ── Code block avec numéros de ligne et bouton Copier ─────────────────────────
@@ -11,6 +12,8 @@ import { RouterChip, SandboxCard, BestOfNDrawer } from "./v2";
 function CodeBlock({ lang, content }: { lang: string; content: string }) {
   const [copied, setCopied] = useState(false);
   const lines = content.split("\n");
+  // Coloration purement visuelle (le contenu copié reste `content` intact).
+  const hl = highlightToLines(content, lang);
 
   const copy = useCallback(() => {
     navigator.clipboard.writeText(content).then(() => {
@@ -72,7 +75,7 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
           }}
         >
           <tbody>
-            {lines.map((line, i) => (
+            {lines.map((_line, i) => (
               <tr key={i} style={{ verticalAlign: "top" }}>
                 <td
                   style={{
@@ -92,7 +95,16 @@ function CodeBlock({ lang, content }: { lang: string; content: string }) {
                     whiteSpace: "pre",
                   }}
                 >
-                  {line || " "}
+                  {hl[i] && hl[i].length
+                    ? hl[i].map((tok, k) => (
+                        <span
+                          key={k}
+                          style={{ color: colorOf(tok.t), fontStyle: isComment(tok.t) ? "italic" : undefined }}
+                        >
+                          {tok.v}
+                        </span>
+                      ))
+                    : " "}
                 </td>
               </tr>
             ))}
@@ -262,6 +274,78 @@ function _extractPreviewUrl(content: string): string | null {
   return m ? m[0] : null;
 }
 
+// ── Rendu de diff (résultat de write_file) ──────────────────────────────────
+// Le backend renvoie « Fichier {créé|modifié} avec succès: <path> » suivi, en
+// cas de modification, d'un diff unifié difflib (---/+++/@@/+/-). On colore
+// chaque ligne par tons du thème (donc réactif clair/sombre).
+
+function _diffLineStyle(line: string): { color: string; bg: string; italic?: boolean } {
+  if (line.startsWith("+++") || line.startsWith("---")) return { color: colors.textSoft, bg: "transparent" };
+  if (line.startsWith("@@")) return { color: colors.infoText, bg: colors.infoSoft };
+  if (line.startsWith("+")) return { color: colors.successText, bg: colors.successSoft };
+  if (line.startsWith("-")) return { color: colors.dangerText, bg: colors.dangerSoft };
+  if (line.startsWith("…")) return { color: colors.textSoft, bg: "transparent", italic: true };
+  return { color: colors.textMuted, bg: "transparent" }; // ligne de contexte
+}
+
+function WriteFileDiff({ content }: { content: string }) {
+  const sep = content.indexOf("\n\n");
+  const header = (sep === -1 ? content : content.slice(0, sep)).trim();
+  const body = sep === -1 ? "" : content.slice(sep + 2);
+  const lines = body.length ? body.split("\n") : [];
+
+  return (
+    <div style={{ fontFamily: "inherit" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          color: colors.successText,
+          fontWeight: 600,
+          fontSize: "11.5px",
+          marginBottom: lines.length ? "8px" : 0,
+        }}
+      >
+        <span style={{ color: colors.success }}>✓</span>
+        <span>{header}</span>
+      </div>
+      {lines.length > 0 && (
+        <div
+          style={{
+            border: `1px solid ${colors.border}`,
+            borderRadius: radii.sm,
+            overflow: "auto",
+            maxHeight: "340px",
+            background: colors.bgAlt,
+          }}
+        >
+          {lines.map((line, i) => {
+            const st = _diffLineStyle(line);
+            return (
+              <div
+                key={i}
+                style={{
+                  color: st.color,
+                  background: st.bg,
+                  fontStyle: st.italic ? "italic" : undefined,
+                  fontFamily: fonts.mono,
+                  fontSize: "11.5px",
+                  lineHeight: 1.55,
+                  padding: "0 10px",
+                  whiteSpace: "pre",
+                }}
+              >
+                {line || " "}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ToolResultCard({ msg }: { msg: ChatMessage }) {
   const [expanded, setExpanded] = useState(false);
   const content = msg.content || "";
@@ -271,6 +355,7 @@ function ToolResultCard({ msg }: { msg: ChatMessage }) {
   const isError = content.startsWith("ERREUR") || content.toLowerCase().includes("timeout");
   const hasWarning = !isError && (content.includes("⚠") || content.toLowerCase().includes("avertissement"));
   const tone = isError ? "danger" : hasWarning ? "warning" : "neutral";
+  const isWriteFile = msg.name === "write_file" && !isError;
 
   const bgMap = { danger: colors.dangerSoft, warning: colors.warningSoft, neutral: colors.bgAlt };
   const borderMap = { danger: colors.danger, warning: colors.warning, neutral: colors.borderStrong };
@@ -290,7 +375,7 @@ function ToolResultCard({ msg }: { msg: ChatMessage }) {
         borderLeft: `3px solid ${borderMap[tone]}`,
         fontSize: "11.5px",
         color: colorMap[tone],
-        maxHeight: expanded ? "400px" : (lineCount > 8 ? "180px" : "none"),
+        maxHeight: isWriteFile ? "none" : expanded ? "400px" : lineCount > 8 ? "180px" : "none",
         overflowY: "auto",
         whiteSpace: "pre-wrap",
         fontFamily: fonts.mono,
@@ -324,11 +409,12 @@ function ToolResultCard({ msg }: { msg: ChatMessage }) {
           </a>
         </div>
       )}
-      <div style={{ display: content ? "block" : "none" }}>{display}</div>
+      {isWriteFile && <WriteFileDiff content={content} />}
+      {!isWriteFile && <div style={{ display: content ? "block" : "none" }}>{display}</div>}
       {!content && !previewUrl && (
         <span style={{ color: colors.textSoft, fontStyle: "italic" }}>(résultat vide)</span>
       )}
-      {isLong && (
+      {!isWriteFile && isLong && (
         <button
           onClick={() => setExpanded(!expanded)}
           style={{
