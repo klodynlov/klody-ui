@@ -15,11 +15,15 @@ export type MessageRole =
   | "error"
   | "router"
   | "sandbox"
-  | "best_of_n";
+  | "best_of_n"
+  | "skills";
 
 export interface MessageStats {
   latency_s: number;
   tokens: number;
+  prompt_tokens?: number;
+  total_tokens?: number;
+  context_window?: number;
   model?: string;
 }
 
@@ -35,6 +39,7 @@ export interface ChatMessage {
   sandbox?: SandboxCheck;
   bestOfN?: BestOfNResult;
   stats?: MessageStats;
+  skills?: string[];
 }
 
 export interface AgentStatus {
@@ -47,6 +52,8 @@ export interface AgentStatus {
   thinking: boolean;
   backend?: "ollama" | "mlx";
   mcpServerActive?: boolean;
+  contextTokens?: number;
+  contextWindow?: number;
 }
 
 const API_BASE = "http://127.0.0.1:8000";
@@ -210,26 +217,32 @@ export function useAgent() {
         setStatus(s => ({ ...s, thinking: false }));
         break;
 
-      case "message_stats":
+      case "message_stats": {
+        const stats: MessageStats = {
+          latency_s: event.latency_s as number,
+          tokens: event.tokens as number,
+          prompt_tokens: event.prompt_tokens as number | undefined,
+          total_tokens: event.total_tokens as number | undefined,
+          context_window: event.context_window as number | undefined,
+          model: event.model as string | undefined,
+        };
         // Attache les stats au dernier message assistant non-streaming
         setMessages(prev => {
           for (let i = prev.length - 1; i >= 0; i--) {
             if (prev[i].role === "assistant" && !prev[i].streaming) {
               const updated = [...prev];
-              updated[i] = {
-                ...prev[i],
-                stats: {
-                  latency_s: event.latency_s as number,
-                  tokens: event.tokens as number,
-                  model: event.model as string | undefined,
-                },
-              };
+              updated[i] = { ...prev[i], stats };
               return updated;
             }
           }
           return prev;
         });
+        // Jauge de contexte : total_tokens du dernier tour ≈ contexte du prochain
+        if (stats.total_tokens && stats.context_window) {
+          setStatus(s => ({ ...s, contextTokens: stats.total_tokens, contextWindow: stats.context_window }));
+        }
         break;
+      }
 
       case "discard_stream":
         setMessages(prev => {
@@ -321,6 +334,13 @@ export function useAgent() {
             content: "",
             bestOfN: event.result as BestOfNResult,
           },
+        ]);
+        break;
+
+      case "skills_used":
+        setMessages(prev => [
+          ...prev,
+          { id: uid(), role: "skills", content: "", skills: event.skills as string[] },
         ]);
         break;
 

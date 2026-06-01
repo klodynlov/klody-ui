@@ -41,6 +41,24 @@ function shortModel(model: string): string {
   return last.length > 32 ? last.slice(0, 32) + "…" : last;
 }
 
+// Jauge de contexte : tokens utilisés / fenêtre du modèle (couleur selon remplissage).
+function ContextGauge({ used, window: win }: { used: number; window: number }) {
+  const pct = Math.min(100, Math.round((used / win) * 100));
+  const tone = pct < 60 ? colors.success : pct < 85 ? colors.warning : colors.danger;
+  const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${n}`);
+  return (
+    <div
+      title={`Contexte : ${used.toLocaleString("fr-FR")} / ${win.toLocaleString("fr-FR")} tokens (${pct}%)`}
+      style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: colors.textMuted, flexShrink: 0 }}
+    >
+      <span style={{ fontFamily: "var(--font-mono)" }}>{k(used)}/{k(win)}</span>
+      <div style={{ width: "46px", height: "5px", borderRadius: radii.pill, background: colors.bgMuted, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: tone, transition: "width 0.3s, background 0.3s" }} />
+      </div>
+    </div>
+  );
+}
+
 export function Header({ status, availableModels, onModelChange, onNewSession, onOpenSettings }: Props) {
   return (
     <header
@@ -147,6 +165,11 @@ export function Header({ status, availableModels, onModelChange, onNewSession, o
         <span style={{ color: colors.textMuted, fontSize: "11.5px" }}>
           {status.messageCount} {status.messageCount === 1 ? "message" : "messages"}
         </span>
+      )}
+
+      {/* Jauge de contexte (tokens réels du dernier échange) */}
+      {!!status.contextTokens && !!status.contextWindow && (
+        <ContextGauge used={status.contextTokens} window={status.contextWindow} />
       )}
 
       {/* New session — primary button compact */}

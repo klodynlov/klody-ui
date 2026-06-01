@@ -472,7 +472,7 @@ function MessageStats({ stats, inline = false }: { stats: NonNullable<ChatMessag
     s >= 60 ? `${Math.floor(s / 60)}m${(s % 60).toFixed(0)}s` : `${s.toFixed(1)}s`;
   return (
     <span
-      title={stats.model ?? ""}
+      title={`${stats.model ?? ""}${stats.prompt_tokens ? ` · prompt ${stats.prompt_tokens.toLocaleString("fr-FR")} + sortie ${stats.tokens.toLocaleString("fr-FR")} tok` : ""}`}
       style={{
         color: colors.textSoft,
         fontSize: "10.5px",
@@ -480,7 +480,7 @@ function MessageStats({ stats, inline = false }: { stats: NonNullable<ChatMessag
         marginLeft: inline ? "8px" : "0",
       }}
     >
-      ⏱ {fmt(stats.latency_s)} · ~{stats.tokens} tok
+      ⏱ {fmt(stats.latency_s)} · {stats.tokens} tok
     </span>
   );
 }
@@ -517,6 +517,19 @@ function Avatar({ kind }: { kind: "user" | "klody" | "error" }) {
   );
 }
 
+// Skills how-to réellement injectés pour ce message (filtrage par pertinence).
+function SkillsChip({ skills }: { skills: string[] }) {
+  if (!skills.length) return null;
+  return (
+    <div style={{ margin: "2px 0 8px 44px", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", fontSize: "11px", fontFamily: fonts.mono }}>
+      <span style={{ color: colors.accentCyan }} title="Compétences injectées dans le contexte (filtrées par pertinence)">🧠 skills</span>
+      {skills.map((s) => (
+        <span key={s} style={{ padding: "1px 8px", background: colors.accentCyanSoft, color: colors.accentCyan, borderRadius: radii.pill, fontSize: "10.5px" }}>{s}</span>
+      ))}
+    </div>
+  );
+}
+
 function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
   const isError = msg.role === "error";
@@ -526,6 +539,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   if (msg.role === "router" && msg.router) return <RouterChip decision={msg.router} />;
   if (msg.role === "sandbox" && msg.sandbox) return <SandboxCard check={msg.sandbox} />;
   if (msg.role === "best_of_n" && msg.bestOfN) return <BestOfNDrawer result={msg.bestOfN} />;
+  if (msg.role === "skills" && msg.skills) return <SkillsChip skills={msg.skills} />;
 
   // ── Style USER : bulle compacte à droite avec avatar
   if (isUser) {
