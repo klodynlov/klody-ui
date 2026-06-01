@@ -5,6 +5,7 @@ import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { ChatPanel } from "./components/ChatPanel";
 import { InputBar } from "./components/InputBar";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { colors } from "./theme";
 
 type SidebarTab = "sessions" | "memory" | "project";
@@ -31,6 +32,7 @@ export default function App() {
   } = useAgent();
 
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("sessions");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Exécution des commandes "/" (famille Mémoire & projet) — actions
   // déterministes via REST/onglets, sans round-trip LLM.
@@ -109,6 +111,7 @@ export default function App() {
         availableModels={availableModels}
         onModelChange={changeModel}
         onNewSession={newSession}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -183,6 +186,8 @@ export default function App() {
           />
         </main>
       </div>
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

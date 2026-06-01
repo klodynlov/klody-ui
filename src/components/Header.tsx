@@ -7,6 +7,7 @@ interface Props {
   availableModels: string[];
   onModelChange: (m: string) => void;
   onNewSession: () => void;
+  onOpenSettings: () => void;
 }
 
 // ── Status dot (vert/rouge selon connecté) ───────────────────────────────────
@@ -40,7 +41,7 @@ function shortModel(model: string): string {
   return last.length > 32 ? last.slice(0, 32) + "…" : last;
 }
 
-export function Header({ status, availableModels, onModelChange, onNewSession }: Props) {
+export function Header({ status, availableModels, onModelChange, onNewSession, onOpenSettings }: Props) {
   return (
     <header
       style={{
@@ -90,6 +91,17 @@ export function Header({ status, availableModels, onModelChange, onNewSession }:
 
       {/* Sélecteur de thème clair / auto / sombre */}
       <ThemeToggle />
+
+      {/* Paramètres (réglages moteur à chaud) */}
+      <button
+        onClick={onOpenSettings}
+        title="Paramètres"
+        style={{ background: "transparent", border: `1px solid ${colors.border}`, color: colors.textMuted, fontSize: "14px", width: "30px", height: "30px", borderRadius: radii.md, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0, fontFamily: "inherit" }}
+        onMouseEnter={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.color = colors.primary; t.style.borderColor = colors.primary; }}
+        onMouseLeave={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.color = colors.textMuted; t.style.borderColor = colors.border; }}
+      >
+        ⚙
+      </button>
 
       {/* Model selector — Bootstrap-like select compact */}
       {availableModels.length > 1 ? (
