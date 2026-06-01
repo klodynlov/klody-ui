@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import type { SessionSummary, MemoryEntry } from "../hooks/useAgent";
 import { alpha, colors, radii } from "../theme";
 import { ProjectPanel } from "./v2";
@@ -30,11 +30,16 @@ interface Props {
   tab: SidebarTab;
   onTabChange: (t: SidebarTab) => void;
   onLoad: (id: string) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => void;
   onForget: (key: string) => void;
 }
 
-export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab, onTabChange, onLoad, onForget }: Props) {
+export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab, onTabChange, onLoad, onDelete, onRename, onForget }: Props) {
   const [search, setSearch] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const fmtLabel = (ts: number) => {
     const d = new Date(ts * 1000);
     const now = new Date();
@@ -219,6 +224,14 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab
           );
           return filtered.map((s) => {
             const isCurrent = s.id === currentSessionId;
+            const isRenaming = renamingId === s.id;
+            const armed = pendingDelete === s.id;
+            const iconBtn: CSSProperties = {
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: "26px", background: "transparent", border: "none",
+              color: colors.textSoft, fontSize: "12px", cursor: "pointer",
+              flexShrink: 0, fontFamily: "inherit", transition: "color 0.15s, background 0.15s",
+            };
             return (
               <div
                 key={s.id}
@@ -234,71 +247,83 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab
                 }}
                 onMouseLeave={(e) => {
                   if (!isCurrent) (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                  if (armed) setPendingDelete(null);
                 }}
               >
-                <button
-                  onClick={() => onLoad(s.id)}
-                  style={{
-                    flex: 1,
-                    textAlign: "left",
-                    padding: "10px 10px 10px 12px",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    minWidth: 0,
-                    fontFamily: "inherit",
-                  }}
-                >
-                  <div
+                {isRenaming ? (
+                  <input
+                    autoFocus
+                    value={renameVal}
+                    onChange={(e) => setRenameVal(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { onRename(s.id, renameVal); setRenamingId(null); }
+                      else if (e.key === "Escape") setRenamingId(null);
+                    }}
+                    onBlur={() => setRenamingId(null)}
                     style={{
-                      color: isCurrent ? colors.accentAmber : colors.textMuted,
-                      fontSize: "10px",
-                      marginBottom: "3px",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      letterSpacing: "0.02em",
-                      fontWeight: 500,
+                      flex: 1, minWidth: 0, margin: "8px 6px 8px 12px",
+                      background: colors.bg, border: `1px solid ${colors.primary}`,
+                      borderRadius: radii.sm, color: colors.text, fontSize: "12px",
+                      padding: "5px 8px", outline: "none", fontFamily: "inherit",
+                    }}
+                  />
+                ) : (
+                  <button
+                    onClick={() => onLoad(s.id)}
+                    style={{
+                      flex: 1, textAlign: "left", padding: "10px 6px 10px 12px",
+                      background: "transparent", border: "none", cursor: "pointer",
+                      minWidth: 0, fontFamily: "inherit",
                     }}
                   >
-                    {fmtLabel(s.modified)}
+                    <div style={{ color: isCurrent ? colors.accentAmber : colors.textMuted, fontSize: "10px", marginBottom: "3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.02em", fontWeight: 500 }}>
+                      {fmtLabel(s.modified)}
+                    </div>
+                    <div style={{ color: colors.text, fontSize: "12px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={s.title || s.preview || s.id}>
+                      {s.title || s.preview || "Nouvelle session"}
+                    </div>
+                    <div style={{ color: colors.textMuted, fontSize: "10px", marginTop: "2px" }}>
+                      {s.messages} msgs
+                    </div>
+                  </button>
+                )}
+                {!isRenaming && (
+                  <div style={{ display: "flex", alignItems: "center", flexShrink: 0, paddingRight: "4px" }}>
+                    <button
+                      title="Renommer"
+                      style={iconBtn}
+                      onClick={(e) => { e.stopPropagation(); setPendingDelete(null); setRenamingId(s.id); setRenameVal(s.title || s.preview || ""); }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.primary; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.textSoft; }}
+                    >
+                      ✎
+                    </button>
+                    <a
+                      href={`${API_BASE}/api/sessions/${s.id}/export`}
+                      download
+                      title="Exporter en Markdown"
+                      style={{ ...iconBtn, textDecoration: "none" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = colors.primary; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = colors.textSoft; }}
+                    >
+                      ↓
+                    </a>
+                    <button
+                      title={armed ? "Cliquer encore pour supprimer" : "Supprimer"}
+                      style={{ ...iconBtn, color: armed ? colors.textInvert : colors.textSoft, background: armed ? colors.danger : "transparent", borderRadius: radii.sm }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (armed) { onDelete(s.id); setPendingDelete(null); }
+                        else setPendingDelete(s.id);
+                      }}
+                      onMouseEnter={(e) => { if (!armed) (e.currentTarget as HTMLButtonElement).style.color = colors.danger; }}
+                      onMouseLeave={(e) => { if (!armed) (e.currentTarget as HTMLButtonElement).style.color = colors.textSoft; }}
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <div
-                    style={{
-                      color: isCurrent ? colors.text : colors.text,
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                    title={s.title || s.preview || s.id}
-                  >
-                    {s.title || s.preview || "Nouvelle session"}
-                  </div>
-                  <div style={{ color: colors.textMuted, fontSize: "10px", marginTop: "2px" }}>
-                    {s.messages} msgs
-                  </div>
-                </button>
-                <a
-                  href={`${API_BASE}/api/sessions/${s.id}/export`}
-                  download
-                  title="Exporter en Markdown"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "0 12px",
-                    color: colors.textMuted,
-                    fontSize: "13px",
-                    textDecoration: "none",
-                    flexShrink: 0,
-                    transition: "color 0.15s",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = colors.primary; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = colors.textMuted; }}
-                >
-                  ↓
-                </a>
+                )}
               </div>
             );
           });

@@ -21,6 +21,8 @@ export default function App() {
     changeModel,
     newSession,
     loadSession,
+    deleteSession,
+    renameSession,
     stopGeneration,
     forgetMemory,
     addMemory,
@@ -123,6 +125,8 @@ export default function App() {
           tab={sidebarTab}
           onTabChange={setSidebarTab}
           onLoad={loadSession}
+          onDelete={deleteSession}
+          onRename={renameSession}
           onForget={forgetMemory}
         />
 
@@ -163,7 +167,13 @@ export default function App() {
             </div>
           )}
 
-          <ChatPanel messages={messages} status={status} />
+          <ChatPanel
+            messages={messages}
+            status={status}
+            sessions={sessions}
+            onSend={sendMessage}
+            onLoad={loadSession}
+          />
           <InputBar
             disabled={!status.connected}
             thinking={status.thinking}

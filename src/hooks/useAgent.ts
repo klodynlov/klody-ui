@@ -423,6 +423,28 @@ export function useAgent() {
     wsRef.current?.send(JSON.stringify({ type: "session_load", session_id: sessionId }));
   }, []);
 
+  const deleteSession = useCallback(async (sessionId: string) => {
+    try {
+      await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+      setSessions(prev => prev.filter(s => s.id !== sessionId)); // retrait optimiste
+      fetchSessions();
+    } catch {}
+  }, [fetchSessions]);
+
+  const renameSession = useCallback(async (sessionId: string, title: string) => {
+    const t = title.trim();
+    if (!t) return;
+    try {
+      await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: t }),
+      });
+      setSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, title: t } : s)));
+      fetchSessions();
+    } catch {}
+  }, [fetchSessions]);
+
   useEffect(() => {
     isUnmounting.current = false;
     connect();
@@ -451,6 +473,8 @@ export function useAgent() {
     changeModel,
     newSession,
     loadSession,
+    deleteSession,
+    renameSession,
     stopGeneration,
     forgetMemory,
     addMemory,

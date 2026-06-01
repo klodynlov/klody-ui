@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
-import type { ChatMessage, AgentStatus } from "../hooks/useAgent";
+import type { ChatMessage, AgentStatus, SessionSummary } from "../hooks/useAgent";
 import { alpha, colors, radii, shadows, fonts } from "../theme";
 import { highlightToLines, colorOf, isComment } from "../syntax";
 import { RouterChip, SandboxCard, BestOfNDrawer } from "./v2";
@@ -631,14 +631,84 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   );
 }
 
+// ── Écran d'accueil (session vide) ────────────────────────────────────────────
+
+const STARTERS = [
+  { icon: "📂", label: "Liste les fichiers du projet", prompt: "Liste les fichiers du projet." },
+  { icon: "🔎", label: "Trouve les TODO et FIXME", prompt: "Cherche tous les TODO et FIXME dans le code et liste-les par fichier." },
+  { icon: "📖", label: "Distiller un livre en méthode", prompt: "Propose-moi 3 livres de ma bibliothèque à distiller en méthode actionnable." },
+  { icon: "✨", label: "Que peux-tu faire ?", prompt: "Explique en quelques points concrets ce que tu peux faire pour moi." },
+];
+
+function WelcomeScreen({ sessions, onSend, onLoad }: { sessions: SessionSummary[]; onSend: (t: string) => void; onLoad: (id: string) => void }) {
+  const h = new Date().getHours();
+  const greeting = h < 6 ? "Bonne nuit" : h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
+  const recent = sessions.filter((s) => s.messages > 0).slice(0, 4);
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "22px", padding: "24px", maxWidth: "680px", margin: "0 auto", width: "100%" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: "44px", fontWeight: 300, letterSpacing: "0.04em", color: colors.text, fontFamily: "Georgia, 'Times New Roman', serif" }}>
+          {greeting}
+        </div>
+        <div style={{ color: colors.textMuted, fontSize: "14px", marginTop: "8px", letterSpacing: "0.04em" }}>
+          Que puis-je faire pour toi&nbsp;?
+        </div>
+      </div>
+
+      {/* Amorces cliquables */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", width: "100%" }}>
+        {STARTERS.map((s) => (
+          <button
+            key={s.label}
+            onClick={() => onSend(s.prompt)}
+            style={{ display: "flex", alignItems: "center", gap: "10px", textAlign: "left", padding: "12px 14px", background: colors.bgAlt, border: `1px solid ${colors.border}`, borderRadius: radii.lg, color: colors.text, fontSize: "12.5px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", boxShadow: shadows.sm }}
+            onMouseEnter={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.borderColor = colors.primary; t.style.background = colors.bgHover; }}
+            onMouseLeave={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.borderColor = colors.border; t.style.background = colors.bgAlt; }}
+          >
+            <span style={{ fontSize: "16px", flexShrink: 0 }}>{s.icon}</span>
+            <span>{s.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Reprise des sessions récentes */}
+      {recent.length > 0 && (
+        <div style={{ width: "100%" }}>
+          <div style={{ color: colors.textSoft, fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "10px", textAlign: "center" }}>
+            Reprendre
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center" }}>
+            {recent.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => onLoad(s.id)}
+                title={s.title || s.preview}
+                style={{ maxWidth: "260px", padding: "7px 12px", background: "transparent", border: `1px solid ${colors.borderStrong}`, borderRadius: radii.pill, color: colors.textMuted, fontSize: "11.5px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", transition: "all 0.15s" }}
+                onMouseEnter={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.color = colors.primary; t.style.borderColor = colors.primary; }}
+                onMouseLeave={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.color = colors.textMuted; t.style.borderColor = colors.borderStrong; }}
+              >
+                ↩ {s.title || s.preview || "Session"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── ChatPanel ─────────────────────────────────────────────────────────────────
 
 interface Props {
   messages: ChatMessage[];
   status: AgentStatus;
+  sessions: SessionSummary[];
+  onSend: (text: string) => void;
+  onLoad: (id: string) => void;
 }
 
-export function ChatPanel({ messages, status }: Props) {
+export function ChatPanel({ messages, status, sessions, onSend, onLoad }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef(false);
@@ -687,29 +757,7 @@ export function ChatPanel({ messages, status }: Props) {
         }}
       >
         {messages.length === 0 && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "14px" }}>
-            <div
-              style={{
-                fontSize: "54px",
-                fontWeight: 200,
-                letterSpacing: "0.2em",
-                color: colors.text,
-                fontFamily: "Georgia, 'Times New Roman', serif",
-              }}
-            >
-              Klody
-            </div>
-            <div
-              style={{
-                width: "80px",
-                height: "1px",
-                background: `linear-gradient(90deg, transparent, ${colors.borderStrong}, transparent)`,
-              }}
-            />
-            <div style={{ color: colors.textMuted, fontSize: "13px", letterSpacing: "0.08em" }}>
-              Nouvelle session — décris ta tâche
-            </div>
-          </div>
+          <WelcomeScreen sessions={sessions} onSend={onSend} onLoad={onLoad} />
         )}
         {messages.map((msg) => (
           <MessageBubble key={msg.id} msg={msg} />
