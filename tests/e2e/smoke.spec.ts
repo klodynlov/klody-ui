@@ -23,8 +23,8 @@ test.describe("smoke", () => {
     // L'overlay "Backend déconnecté" ne doit PAS être visible (onopen tiré)
     await expect(page.getByRole("alert").filter({ hasText: "Backend déconnecté" })).toHaveCount(0);
 
-    // L'écran vide affiche le wordmark XXL + le hint
-    await expect(page.getByText("Nouvelle session — décris ta tâche")).toBeVisible();
+    // L'écran d'accueil (session vide) est rendu : salutation + amorces cliquables
+    await expect(page.getByTestId("welcome-screen")).toBeVisible();
   });
 
   test("bandeau 'Backend déconnecté' apparaît quand le WS ferme", async ({ page }) => {
@@ -50,6 +50,6 @@ test.describe("smoke", () => {
     });
 
     // Pas de messages → écran d'accueil reste visible
-    await expect(page.getByText("Nouvelle session — décris ta tâche")).toBeVisible();
+    await expect(page.getByTestId("welcome-screen")).toBeVisible();
   });
 });
