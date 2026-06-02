@@ -44,14 +44,17 @@ test.describe("chat flow", () => {
     // Le bouton "Copier" du bloc de code est rendu
     await expect(page.getByRole("button", { name: /Copier/i }).first()).toBeVisible();
 
-    // 4. Stats latency/tokens
+    // 4. Stats latency/tokens — format réel : « ⏱ 2.3s · 128 tok »
     await emitWs(page, {
       type: "message_stats",
       latency_s: 2.3,
       tokens: 128,
       model: "qwen2.5-coder:32b",
     });
-    await expect(page.getByText(/⏱ 2\.3s · ~128 tok/)).toBeVisible();
+    const stats = page.getByTestId("message-stats");
+    await expect(stats).toBeVisible();
+    await expect(stats).toContainText("2.3s");
+    await expect(stats).toContainText("128 tok");
 
     // 5. done → thinking false
     await emitWs(page, { type: "done" });
