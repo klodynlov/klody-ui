@@ -4,6 +4,7 @@ import type {
   SandboxCheck,
   BestOfNResult,
   ProjectInfo,
+  PreviewFeedback,
 } from "../components/v2";
 
 export type MessageRole =
@@ -17,6 +18,7 @@ export type MessageRole =
   | "sandbox"
   | "best_of_n"
   | "skills"
+  | "preview"
   | "approval";
 
 export interface MessageStats {
@@ -41,6 +43,7 @@ export interface ChatMessage {
   bestOfN?: BestOfNResult;
   stats?: MessageStats;
   skills?: string[];
+  previewFeedback?: PreviewFeedback;
   // Approbation humaine (human-in-the-loop) — role "approval"
   approvalId?: string;
   approvalState?: "pending" | "approved" | "denied" | "timeout";
@@ -373,6 +376,24 @@ export function useAgent() {
         setMessages(prev => [
           ...prev,
           { id: uid(), role: "skills", content: "", skills: event.skills as string[] },
+        ]);
+        break;
+
+      case "preview_feedback":
+        setMessages(prev => [
+          ...prev,
+          {
+            id: uid(),
+            role: "preview",
+            content: "",
+            previewFeedback: {
+              url: event.url as string,
+              count: event.count as number,
+              attempt: event.attempt as number,
+              max: event.max as number,
+              errors: (event.errors as PreviewFeedback["errors"]) ?? [],
+            },
+          },
         ]);
         break;
 

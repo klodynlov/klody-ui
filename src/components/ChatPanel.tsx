@@ -5,7 +5,7 @@ import type { Components } from "react-markdown";
 import type { ChatMessage, AgentStatus, SessionSummary } from "../hooks/useAgent";
 import { alpha, colors, radii, shadows, fonts } from "../theme";
 import { highlightToLines, colorOf, isComment } from "../syntax";
-import { RouterChip, SandboxCard, BestOfNDrawer } from "./v2";
+import { RouterChip, SandboxCard, BestOfNDrawer, PreviewFeedbackChip } from "./v2";
 
 // ── Code block avec numéros de ligne et bouton Copier ─────────────────────────
 
@@ -642,6 +642,7 @@ function MessageBubble({ msg, onApproval }: { msg: ChatMessage; onApproval: (id:
   if (msg.role === "sandbox" && msg.sandbox) return <SandboxCard check={msg.sandbox} />;
   if (msg.role === "best_of_n" && msg.bestOfN) return <BestOfNDrawer result={msg.bestOfN} />;
   if (msg.role === "skills" && msg.skills) return <SkillsChip skills={msg.skills} />;
+  if (msg.role === "preview" && msg.previewFeedback) return <PreviewFeedbackChip fb={msg.previewFeedback} />;
 
   // ── Style USER : bulle compacte à droite avec avatar
   if (isUser) {
