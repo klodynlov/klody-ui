@@ -32,7 +32,7 @@ test.describe("session control", () => {
     // L'UI vide les messages immédiatement
     await expect(page.getByText("ping")).toHaveCount(0);
     await expect(page.getByText("pong")).toHaveCount(0);
-    await expect(page.getByText("Nouvelle session — décris ta tâche")).toBeVisible();
+    await expect(page.getByTestId("welcome-screen")).toBeVisible();
 
     // Et a envoyé session_new au WS
     const sent = await getWsSent(page);

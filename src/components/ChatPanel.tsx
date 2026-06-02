@@ -472,6 +472,7 @@ function MessageStats({ stats, inline = false }: { stats: NonNullable<ChatMessag
     s >= 60 ? `${Math.floor(s / 60)}m${(s % 60).toFixed(0)}s` : `${s.toFixed(1)}s`;
   return (
     <span
+      data-testid="message-stats"
       title={`${stats.model ?? ""}${stats.prompt_tokens ? ` · prompt ${stats.prompt_tokens.toLocaleString("fr-FR")} + sortie ${stats.tokens.toLocaleString("fr-FR")} tok` : ""}`}
       style={{
         color: colors.textSoft,
@@ -762,7 +763,7 @@ function WelcomeScreen({ sessions, onSend, onLoad }: { sessions: SessionSummary[
   const recent = sessions.filter((s) => s.messages > 0).slice(0, 4);
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "22px", padding: "24px", maxWidth: "680px", margin: "0 auto", width: "100%" }}>
+    <div data-testid="welcome-screen" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "22px", padding: "24px", maxWidth: "680px", margin: "0 auto", width: "100%" }}>
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: "44px", fontWeight: 300, letterSpacing: "0.04em", color: colors.text, fontFamily: "Georgia, 'Times New Roman', serif" }}>
           {greeting}
