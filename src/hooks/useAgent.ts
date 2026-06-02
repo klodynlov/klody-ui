@@ -4,6 +4,7 @@ import type {
   SandboxCheck,
   BestOfNResult,
   ProjectInfo,
+  PreviewFeedback,
 } from "../components/v2";
 
 export type MessageRole =
@@ -17,6 +18,7 @@ export type MessageRole =
   | "sandbox"
   | "best_of_n"
   | "skills"
+  | "preview"
   | "approval";
 
 export interface MessageStats {
@@ -41,6 +43,7 @@ export interface ChatMessage {
   bestOfN?: BestOfNResult;
   stats?: MessageStats;
   skills?: string[];
+  previewFeedback?: PreviewFeedback;
   // Approbation humaine (human-in-the-loop) — role "approval"
   approvalId?: string;
   approvalState?: "pending" | "approved" | "denied" | "timeout";
@@ -376,6 +379,24 @@ export function useAgent() {
         ]);
         break;
 
+      case "preview_feedback":
+        setMessages(prev => [
+          ...prev,
+          {
+            id: uid(),
+            role: "preview",
+            content: "",
+            previewFeedback: {
+              url: event.url as string,
+              count: event.count as number,
+              attempt: event.attempt as number,
+              max: event.max as number,
+              errors: (event.errors as PreviewFeedback["errors"]) ?? [],
+            },
+          },
+        ]);
+        break;
+
       case "conventions_loaded":
         setProjectInfo(prev => ({
           ...prev,
@@ -420,6 +441,13 @@ export function useAgent() {
     }
   }, [fetchSessions, fetchMemories]);
 
+  // Persiste la session active dans sessionStorage : survit à un reload du
+  // webview ET à une reconnexion ws, mais est vidée à la fermeture complète de
+  // l'app → un lancement neuf repart vierge (pas de reprise intempestive).
+  useEffect(() => {
+    if (status.sessionId) sessionStorage.setItem("klody_active_session", status.sessionId);
+  }, [status.sessionId]);
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
@@ -427,6 +455,15 @@ export function useAgent() {
     wsRef.current = ws;
 
     ws.onopen = () => {
+      // Reprise d'une session active (reconnexion ws OU reload du webview sous
+      // forte charge MLX) : le backend recrée une mémoire VIDE à chaque
+      // connexion → on lui renvoie session_load pour restaurer l'historique
+      // (persisté à chaque tour côté serveur). sessionStorage est null au tout
+      // premier lancement → pas de reprise, on garde l'écran d'accueil vierge.
+      const resume = sessionStorage.getItem("klody_active_session");
+      if (resume) {
+        ws.send(JSON.stringify({ type: "session_load", session_id: resume }));
+      }
       setStatus(s => ({ ...s, connected: true }));
       fetchStatus();
       fetchSessions();
