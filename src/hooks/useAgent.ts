@@ -37,6 +37,8 @@ export interface ChatMessage {
   name?: string;
   args?: Record<string, unknown>;
   streaming?: boolean;
+  // CoT (mode thinking) diffusé en direct AVANT la réponse — panneau « Raisonnement… »
+  reasoning?: string;
   // Payloads v2 spécifiques (selon role)
   router?: RouterDecision;
   sandbox?: SandboxCheck;
@@ -195,6 +197,32 @@ export function useAgent() {
 
       case "thinking":
         setStatus(s => ({ ...s, thinking: true }));
+        break;
+
+      case "reasoning":
+        // CoT (mode thinking) diffusé en direct : on l'accumule sur le message
+        // assistant en cours (panneau « Raisonnement… »). Le 1er `token` ajoutera
+        // ensuite le `content` sur LA MÊME bulle. Évite l'écran figé pendant le CoT.
+        setStatus(s => ({ ...s, thinking: true }));
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant" && last.streaming) {
+            return [
+              ...prev.slice(0, -1),
+              { ...last, reasoning: (last.reasoning ?? "") + (event.content as string) },
+            ];
+          }
+          return [
+            ...prev,
+            {
+              id: uid(),
+              role: "assistant",
+              content: "",
+              streaming: true,
+              reasoning: event.content as string,
+            },
+          ];
+        });
         break;
 
       case "token":

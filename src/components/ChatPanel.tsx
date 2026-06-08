@@ -632,6 +632,82 @@ function ApprovalCard({ msg, onApproval }: { msg: ChatMessage; onApproval: (id: 
   );
 }
 
+// ── Panneau « Raisonnement… » : CoT (mode thinking) diffusé en direct ─────────
+// Rend visible l'attente du brain (sinon écran figé pendant tout le raisonnement).
+// Ouvert pendant le streaming, replié automatiquement une fois la réponse arrivée.
+function ReasoningPanel({ text, streaming }: { text: string; streaming?: boolean }) {
+  const [open, setOpen] = useState(true);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Le CoT redevient secondaire une fois la réponse terminée → repli auto.
+  useEffect(() => {
+    if (!streaming) setOpen(false);
+  }, [streaming]);
+
+  // Suit le défilement du raisonnement tant qu'il s'écrit.
+  useEffect(() => {
+    if (open && streaming && bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [text, open, streaming]);
+
+  return (
+    <div
+      style={{
+        margin: "0 0 10px",
+        border: `1px solid ${colors.borderSoft}`,
+        borderRadius: radii.md,
+        background: colors.bgAlt,
+        overflow: "hidden",
+      }}
+    >
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          width: "100%",
+          padding: "7px 12px",
+          border: "none",
+          background: "transparent",
+          color: colors.textMuted,
+          fontSize: "11.5px",
+          fontWeight: 500,
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ fontSize: "12px" }}>🧠</span>
+        <span>Raisonnement</span>
+        {streaming && open && (
+          <span style={{ color: colors.textSoft, fontSize: "11px" }}>en cours…</span>
+        )}
+        <span style={{ marginLeft: "auto", color: colors.textSoft, fontSize: "10px" }}>
+          {open ? "▲" : "▼"}
+        </span>
+      </button>
+      {open && (
+        <div
+          ref={bodyRef}
+          style={{
+            padding: "0 12px 10px",
+            maxHeight: "240px",
+            overflowY: "auto",
+            color: colors.textSoft,
+            fontSize: "12px",
+            lineHeight: "1.6",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MessageBubble({ msg, onApproval }: { msg: ChatMessage; onApproval: (id: string, approved: boolean) => void }) {
   const isUser = msg.role === "user";
   const isError = msg.role === "error";
@@ -721,6 +797,9 @@ function MessageBubble({ msg, onApproval }: { msg: ChatMessage; onApproval: (id:
           </span>
           {!isUser && msg.stats && <MessageStats stats={msg.stats} inline />}
         </div>
+        {!isError && msg.reasoning && (
+          <ReasoningPanel text={msg.reasoning} streaming={msg.streaming} />
+        )}
         <div
           style={{
             padding: "0",
