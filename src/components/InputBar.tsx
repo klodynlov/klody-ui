@@ -6,23 +6,29 @@ import { slashQuery, filterCommands, parseCommand, type SlashCommand } from "../
 interface Props {
   disabled: boolean;
   thinking: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string, imagePaths?: string[]) => void;
+  onUploadImage: (file: File) => Promise<{ name: string; path: string }>;
   onStop: () => void;
   onCommand: (name: string, args: string) => void;
 }
 
 const MAX_FILE_SIZE = 50 * 1024; // 50 KB
+const MAX_IMAGE_SIZE = 12 * 1024 * 1024; // 12 Mo — doit rester ≤ VL_MAX_IMAGE_MB (backend)
 
 const ACCEPTED_EXTENSIONS = ".py,.js,.ts,.tsx,.jsx,.md,.txt,.json,.yaml,.yml,.toml,.rs,.go,.sh,.bash,.zsh,.css,.html,.xml,.sql,.env,.cfg,.ini,.log";
+const ACCEPTED_IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/gif,image/bmp";
 
-export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Props) {
+export function InputBar({ disabled, thinking, onSend, onUploadImage, onStop, onCommand }: Props) {
   const [text, setText] = useState("");
   const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
+  const [images, setImages] = useState<{ name: string; path: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // ── Menu "/" : visible tant qu'on tape le nom de commande (slash + token) ──
   const slashFilter = slashQuery(text);
@@ -48,8 +54,15 @@ export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Prop
     }
   }, [onCommand, resetInput]);
 
+  const clearImages = useCallback(() => {
+    setImages(prev => {
+      prev.forEach(i => URL.revokeObjectURL(i.url));
+      return [];
+    });
+  }, []);
+
   const submit = useCallback(() => {
-    if (disabled) return;
+    if (disabled || uploading) return;
     const trimmed = text.trim();
 
     // Commande "/" connue → exécution déterministe (pas d'envoi au LLM).
@@ -57,12 +70,13 @@ export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Prop
     if (parsed) {
       onCommand(parsed.name, parsed.args);
       setAttachment(null);
+      clearImages();
       setFileError(null);
       resetInput();
       return;
     }
 
-    if (!trimmed && !attachment) return;
+    if (!trimmed && !attachment && images.length === 0) return;
 
     let finalMessage = trimmed;
     if (attachment) {
@@ -71,14 +85,15 @@ export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Prop
       finalMessage = trimmed ? `${codeBlock}\n\n${trimmed}` : codeBlock;
     }
 
-    onSend(finalMessage);
+    onSend(finalMessage, images.map(i => i.path));
     setText("");
     setAttachment(null);
+    clearImages();
     setFileError(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [text, attachment, disabled, onSend, onCommand, resetInput]);
+  }, [text, attachment, images, uploading, disabled, onSend, onCommand, resetInput, clearImages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (menuVisible) {
@@ -141,7 +156,39 @@ export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Prop
     e.target.value = "";
   };
 
-  const canSend = !disabled && (text.trim().length > 0 || attachment !== null);
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setFileError(null);
+    setUploading(true);
+    try {
+      for (const file of files) {
+        if (file.size > MAX_IMAGE_SIZE) {
+          setFileError(`Image trop lourde (max 12 Mo) — ${file.name} fait ${Math.round(file.size / 1024 / 1024 * 10) / 10} Mo`);
+          continue;
+        }
+        try {
+          const { name, path } = await onUploadImage(file);
+          setImages(prev => [...prev, { name, path, url: URL.createObjectURL(file) }]);
+        } catch (err) {
+          setFileError(`Échec de l'upload — ${file.name} : ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (path: string) => {
+    setImages(prev => {
+      const gone = prev.find(i => i.path === path);
+      if (gone) URL.revokeObjectURL(gone.url);
+      return prev.filter(i => i.path !== path);
+    });
+  };
+
+  const canSend = !disabled && !uploading && (text.trim().length > 0 || attachment !== null || images.length > 0);
 
   return (
     <div
@@ -212,6 +259,54 @@ export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Prop
         </div>
       )}
 
+      {/* Image previews (vision B-lite) */}
+      {(images.length > 0 || uploading) && (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" }}>
+          {images.map(img => (
+            <div key={img.path} style={{ position: "relative", width: "48px", height: "48px" }} title={img.name}>
+              <img
+                src={img.url}
+                alt={img.name}
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  objectFit: "cover",
+                  borderRadius: radii.md,
+                  border: `1px solid ${colors.borderStrong}`,
+                  display: "block",
+                }}
+              />
+              <button
+                onClick={() => removeImage(img.path)}
+                title="Retirer l'image"
+                style={{
+                  position: "absolute",
+                  top: "-6px",
+                  right: "-6px",
+                  background: colors.danger,
+                  color: colors.textInvert,
+                  border: "none",
+                  borderRadius: radii.pill,
+                  width: "18px",
+                  height: "18px",
+                  fontSize: "11px",
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {uploading && (
+            <span style={{ fontSize: "12px", color: colors.textMuted }}>Upload de l'image…</span>
+          )}
+        </div>
+      )}
+
       {/* Input row */}
       <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", position: "relative" }}>
         {menuVisible && (
@@ -263,6 +358,50 @@ export function InputBar({ disabled, thinking, onSend, onStop, onCommand }: Prop
           }}
         >
           📎
+        </button>
+
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept={ACCEPTED_IMAGE_TYPES}
+          multiple
+          onChange={handleImageChange}
+          style={{ display: "none" }}
+        />
+
+        {/* Attach image button (vision B-lite) — Klody « voit » l'image via analyser_image */}
+        <button
+          onClick={() => imageInputRef.current?.click()}
+          disabled={disabled || thinking || uploading}
+          title="Joindre une image (Klody la regarde)"
+          style={{
+            background: colors.bg,
+            border: `1px solid ${colors.borderStrong}`,
+            borderRadius: radii.md,
+            color: images.length > 0 ? colors.accentCyan : colors.textMuted,
+            fontSize: "16px",
+            width: "42px",
+            height: "42px",
+            cursor: disabled || thinking || uploading ? "not-allowed" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "all 0.15s",
+            opacity: disabled || thinking || uploading ? 0.4 : 1,
+          }}
+          onMouseEnter={(e) => {
+            if (!disabled && !thinking && !uploading) {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = colors.primary;
+              (e.currentTarget as HTMLButtonElement).style.color = colors.primary;
+            }
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = colors.borderStrong;
+            (e.currentTarget as HTMLButtonElement).style.color = images.length > 0 ? colors.accentCyan : colors.textMuted;
+          }}
+        >
+          🖼️
         </button>
 
         <textarea

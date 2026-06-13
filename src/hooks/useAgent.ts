@@ -46,6 +46,8 @@ export interface ChatMessage {
   stats?: MessageStats;
   skills?: string[];
   previewFeedback?: PreviewFeedback;
+  // Images jointes par l'utilisateur (vision B-lite) — chemins serveur sous _uploads
+  imagePaths?: string[];
   // Approbation humaine (human-in-the-loop) — role "approval"
   approvalId?: string;
   approvalState?: "pending" | "approved" | "denied" | "timeout";
@@ -514,10 +516,29 @@ export function useAgent() {
     };
   }, [fetchStatus, fetchSessions, fetchMemories, handleEvent]);
 
-  const sendMessage = useCallback((content: string) => {
+  // Upload d'une image vers le backend (vision B-lite). Renvoie le chemin serveur
+  // (_uploads) à joindre au prochain message chat dans `image_paths`. Pas de header
+  // Content-Type : le navigateur pose la frontière multipart lui-même.
+  const uploadImage = useCallback(async (file: File): Promise<{ name: string; path: string }> => {
+    const form = new FormData();
+    form.append("file", file);
+    const r = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: form });
+    if (!r.ok) {
+      let detail = `HTTP ${r.status}`;
+      try { detail = (await r.json()).detail || detail; } catch { /* corps non-JSON */ }
+      throw new Error(detail);
+    }
+    const body = await r.json();
+    return { name: file.name, path: body.path as string };
+  }, []);
+
+  const sendMessage = useCallback((content: string, imagePaths?: string[]) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-    setMessages(prev => [...prev, { id: uid(), role: "user", content }]);
-    wsRef.current.send(JSON.stringify({ type: "chat", content }));
+    const imgs = imagePaths && imagePaths.length ? imagePaths : undefined;
+    setMessages(prev => [...prev, { id: uid(), role: "user", content, imagePaths: imgs }]);
+    const payload: { type: string; content: string; image_paths?: string[] } = { type: "chat", content };
+    if (imgs) payload.image_paths = imgs;
+    wsRef.current.send(JSON.stringify(payload));
   }, []);
 
   const changeModel = useCallback((model: string) => {
@@ -602,6 +623,7 @@ export function useAgent() {
     skills,
     projectInfo,
     sendMessage,
+    uploadImage,
     changeModel,
     newSession,
     loadSession,
