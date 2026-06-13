@@ -19,6 +19,7 @@ export default function App() {
     memories,
     projectInfo,
     sendMessage,
+    uploadImage,
     changeModel,
     newSession,
     loadSession,
@@ -183,6 +184,7 @@ export default function App() {
             disabled={!status.connected}
             thinking={status.thinking}
             onSend={sendMessage}
+            onUploadImage={uploadImage}
             onStop={stopGeneration}
             onCommand={handleCommand}
           />

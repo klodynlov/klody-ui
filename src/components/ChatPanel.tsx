@@ -757,6 +757,29 @@ function MessageBubble({ msg, onApproval }: { msg: ChatMessage; onApproval: (id:
             }}
           >
             <MessageContent text={msg.content} isUser />
+            {msg.imagePaths && msg.imagePaths.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: msg.content ? "8px" : 0 }}>
+                {msg.imagePaths.map((p, i) => (
+                  <span
+                    key={i}
+                    title={p}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      background: colors.bg,
+                      border: `1px solid ${alpha(colors.primary, 33)}`,
+                      borderRadius: "999px",
+                      padding: "2px 10px",
+                      fontSize: "12px",
+                      color: colors.text,
+                    }}
+                  >
+                    🖼️ {p.split("/").pop()}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           {msg.content && (
             <div style={{ marginTop: "2px" }}>
