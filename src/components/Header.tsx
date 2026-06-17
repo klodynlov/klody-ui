@@ -36,6 +36,8 @@ function StatusDot({ active, label, color = colors.success }: { active: boolean;
 // Tronque un nom de modèle (ex: "mlx-community/Qwen3-Coder-30B-…") en truc lisible
 function shortModel(model: string): string {
   if (!model) return "";
+  // "auto" = mode routage automatique (le serveur choisit brain/coder par tâche).
+  if (model === "auto") return "🔀 Auto";
   // Garde la partie après le dernier "/" puis tronque
   const last = model.split("/").pop() ?? model;
   return last.length > 32 ? last.slice(0, 32) + "…" : last;
@@ -122,11 +124,15 @@ export function Header({ status, availableModels, onModelChange, onNewSession, o
       </button>
 
       {/* Model selector — Bootstrap-like select compact */}
-      {availableModels.length > 1 ? (
+      {availableModels.length >= 1 ? (
         <select
-          value={status.model}
+          value={status.model || "auto"}
           onChange={(e) => onModelChange(e.target.value)}
-          title={status.model}
+          title={
+            (status.model || "auto") === "auto"
+              ? "Auto : Klody choisit brain/coder selon la tâche. Choisir un modèle l'épingle."
+              : `Épinglé : ${status.model}`
+          }
           style={{
             background: colors.bgAlt,
             border: `1px solid ${colors.border}`,
@@ -140,7 +146,7 @@ export function Header({ status, availableModels, onModelChange, onNewSession, o
             maxWidth: "260px",
           }}
         >
-          {availableModels.map((m) => (
+          {["auto", ...availableModels.filter((m) => m !== "auto")].map((m) => (
             <option key={m} value={m}>{shortModel(m)}</option>
           ))}
         </select>
