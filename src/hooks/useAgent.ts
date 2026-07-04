@@ -107,7 +107,11 @@ export function useAgent() {
         ...s,
         ollama: data.ollama,
         libraryBrain: data.librarybrain?.up ?? false,
-        model: data.model || s.model,
+        // NE PAS écraser `model` ici : le modèle sélectionné/épinglé est un état
+        // PAR CONNEXION WS (session_init / model_changed en sont la source de
+        // vérité). /api/status est HTTP stateless et renvoie config.LLM_MODEL
+        // (le brain) → ce poll périodique (15 s) réécrasait le pin manuel, d'où
+        // « le modèle change tout seul au bout de quelques secondes ».
         backend: data.backend,
         mcpServerActive: data.mcp_server_active,
       }));
