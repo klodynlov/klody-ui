@@ -126,7 +126,9 @@ export function useAgent() {
 
   const fetchSessions = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE}/api/sessions`);
+      // `filter=all` : actives + archivées en un seul appel — la sidebar les
+      // ventile via le drapeau `archived`. Le backend borne à 50 par vue.
+      const r = await fetch(`${API_BASE}/api/sessions?filter=all`);
       setSessions(await r.json());
     } catch {}
   }, []);
@@ -602,6 +604,21 @@ export function useAgent() {
     } catch {}
   }, [fetchSessions]);
 
+  // Archive (range) ou désarchive (réactive) une session. Elle reste sur disque
+  // et chargeable → « réutiliser » = simplement la recharger. Mise à jour
+  // optimiste du drapeau, puis réconciliation.
+  const archiveSession = useCallback(async (sessionId: string, archived: boolean) => {
+    try {
+      await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      setSessions(prev => prev.map(s => (s.id === sessionId ? { ...s, archived } : s)));
+      fetchSessions();
+    } catch {}
+  }, [fetchSessions]);
+
   useEffect(() => {
     isUnmounting.current = false;
     connect();
@@ -633,6 +650,7 @@ export function useAgent() {
     loadSession,
     deleteSession,
     renameSession,
+    archiveSession,
     stopGeneration,
     respondApproval,
     forgetMemory,
@@ -655,6 +673,7 @@ export interface SessionSummary {
   messages: number;
   modified: number;
   preview: string;
+  archived: boolean;
 }
 
 export interface SkillEntry {

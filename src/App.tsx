@@ -25,6 +25,7 @@ export default function App() {
     loadSession,
     deleteSession,
     renameSession,
+    archiveSession,
     stopGeneration,
     respondApproval,
     forgetMemory,
@@ -132,6 +133,7 @@ export default function App() {
           onLoad={loadSession}
           onDelete={deleteSession}
           onRename={renameSession}
+          onArchive={archiveSession}
           onForget={forgetMemory}
         />
 
