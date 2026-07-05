@@ -32,14 +32,17 @@ interface Props {
   onLoad: (id: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
+  onArchive: (id: string, archived: boolean) => void;
   onForget: (key: string) => void;
 }
 
-export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab, onTabChange, onLoad, onDelete, onRename, onForget }: Props) {
+export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab, onTabChange, onLoad, onDelete, onRename, onArchive, onForget }: Props) {
   const [search, setSearch] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  // Sous-vue de l'onglet Sessions : actives (défaut) vs archivées (rangées).
+  const [sessionView, setSessionView] = useState<"active" | "archived">("active");
   const fmtLabel = (ts: number) => {
     const d = new Date(ts * 1000);
     const now = new Date();
@@ -137,6 +140,35 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab
               (e.target as HTMLInputElement).style.boxShadow = "none";
             }}
           />
+          {/* Bascule Actives / Archivées */}
+          <div style={{ display: "flex", gap: "4px", marginTop: "8px" }}>
+            {(["active", "archived"] as const).map(v => {
+              const on = sessionView === v;
+              const count = sessions.filter(s => (v === "archived") === !!s.archived).length;
+              return (
+                <button
+                  key={v}
+                  onClick={() => setSessionView(v)}
+                  style={{
+                    flex: 1,
+                    background: on ? colors.primary : "transparent",
+                    border: `1px solid ${on ? colors.primary : colors.borderStrong}`,
+                    borderRadius: radii.md,
+                    color: on ? colors.textInvert : colors.textMuted,
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    letterSpacing: "0.03em",
+                    padding: "5px 0",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {v === "active" ? "Actives" : "Archivées"}{count > 0 ? ` (${count})` : ""}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -211,15 +243,20 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab
         {/* ── Onglet Sessions ── */}
         {tab === "sessions" && (() => {
           const q = search.toLowerCase().trim();
+          const inView = sessions.filter(s => (sessionView === "archived") === !!s.archived);
           const filtered = q
-            ? sessions.filter(s =>
+            ? inView.filter(s =>
                 (s.title || s.id).toLowerCase().includes(q) ||
                 s.preview.toLowerCase().includes(q)
               )
-            : sessions;
+            : inView;
           if (filtered.length === 0) return (
-            <div style={{ padding: "16px", color: colors.textMuted, fontSize: "12px" }}>
-              {q ? `Aucun résultat pour « ${search} »` : "Aucune session sauvegardée"}
+            <div style={{ padding: "16px", color: colors.textMuted, fontSize: "12px", lineHeight: 1.5 }}>
+              {q
+                ? `Aucun résultat pour « ${search} »`
+                : sessionView === "archived"
+                  ? "Aucune session archivée. Archive une ancienne session pour la ranger ici et la réutiliser plus tard."
+                  : "Aucune session sauvegardée"}
             </div>
           );
           return filtered.map((s) => {
@@ -309,6 +346,15 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab
                     >
                       ↓
                     </a>
+                    <button
+                      title={s.archived ? "Désarchiver — remettre dans les actives" : "Archiver — ranger pour réutiliser plus tard"}
+                      style={iconBtn}
+                      onClick={(e) => { e.stopPropagation(); setPendingDelete(null); onArchive(s.id, !s.archived); }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.primary; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = colors.textSoft; }}
+                    >
+                      {s.archived ? "⤒" : "⤓"}
+                    </button>
                     <button
                       title={armed ? "Cliquer encore pour supprimer" : "Supprimer"}
                       style={{ ...iconBtn, color: armed ? colors.textInvert : colors.textSoft, background: armed ? colors.danger : "transparent", borderRadius: radii.sm }}
