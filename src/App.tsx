@@ -158,7 +158,8 @@ export default function App() {
                 textAlign: "center",
               }}
             >
-              <strong>Backend déconnecté.</strong> Lancer{" "}
+              <strong>Backend déconnecté.</strong> Reconnexion automatique…{" "}
+              Si ça persiste, relancer l'API&nbsp;:{" "}
               <code
                 style={{
                   background: colors.bg,
@@ -168,9 +169,8 @@ export default function App() {
                   fontFamily: "inherit",
                 }}
               >
-                python api/server.py
-              </code>{" "}
-              dans <code>klody-code-ai</code>.
+                launchctl kickstart -k gui/$(id -u)/com.klody.api
+              </code>
             </div>
           )}
 
