@@ -74,35 +74,30 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(BackendProcess(Mutex::new(None)))
-        .setup(|app| {
+        .setup(|_app| {
             let klody_dir = find_klody_dir();
 
             if !is_mlx_running() {
                 spawn_mlx(&klody_dir);
             }
 
+            // L'API :8000 est possédée par le LaunchAgent com.klody.api (RunAtLoad
+            // + KeepAlive, cf. klody-code-ai/scripts/start-api.sh). L'app NE la
+            // spawn PLUS : deux démarreurs se battaient pour :8000 (garde
+            // is_backend_running() = TOCTOU → au boot le LaunchAgent charge encore
+            // (imports FastAPI + MLX + bge-m3, plusieurs secondes), l'app voyait le
+            // port libre et lançait SON propre server.py → course → l'un bind,
+            // l'autre boucle en « Errno 48 address already in use » (KeepAlive +
+            // ThrottleInterval 30 s), et le banner « Backend déconnecté » revenait à
+            // CHAQUE ouverture froide). Owner unique = LaunchAgent. Si le port
+            // n'écoute pas encore, il charge ou est déchargé → le front reconnecte
+            // le WebSocket tout seul (backoff dans useAgent.ts).
             if !is_backend_running() {
-                let venv_py = format!("{klody_dir}/.venv/bin/python3");
-                let python = if std::path::Path::new(&venv_py).exists() {
-                    venv_py
-                } else {
-                    "python3".to_string()
-                };
-
-                match Command::new(&python)
-                    .arg("api/server.py")
-                    .current_dir(&klody_dir)
-                    .spawn()
-                {
-                    Ok(child) => {
-                        *app.state::<BackendProcess>().0.lock().unwrap() = Some(child);
-                        std::thread::sleep(Duration::from_secs(3));
-                    }
-                    Err(e) => {
-                        eprintln!("[Klody] Impossible de démarrer le backend: {e}");
-                        eprintln!("[Klody] Répertoire: {klody_dir}");
-                    }
-                }
+                eprintln!(
+                    "[Klody] API :8000 pas encore prête — gérée par le LaunchAgent \
+                     com.klody.api (en cours de chargement ou déchargée). Le front \
+                     reconnectera automatiquement le WebSocket."
+                );
             }
             Ok(())
         })
