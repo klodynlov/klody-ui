@@ -104,6 +104,12 @@ export function useAgent() {
   // backend (LaunchAgent, ThrottleInterval 30 s + reload MLX) peut aboutir, et
   // n'escalade vers la commande manuelle qu'au-delà.
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  // Session dont on a demandé la reprise auto au (re)connect ws. Sert à
+  // distinguer un échec de reprise (session absente côté backend après un
+  // redémarrage) d'une vraie erreur agent : le 1er `error` reçu tant que cette
+  // ref est armée purge l'id périmé et retombe sur l'accueil, sans polluer le
+  // fil. Remise à null dès qu'une session est établie (session_init/loaded).
+  const pendingResumeRef = useRef<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -194,6 +200,11 @@ export function useAgent() {
     switch (event.type) {
       case "session_init":
       case "session_loaded":
+        // session_loaded = reprise réussie → on désarme. session_init est émis à
+        // CHAQUE (re)connexion (session neuve par défaut) AVANT le résultat du
+        // session_load de reprise : ne PAS désarmer ici, sinon l'échec de reprise
+        // qui suit ne serait plus reconnu et l'erreur brute s'afficherait.
+        if (event.type === "session_loaded") pendingResumeRef.current = null;
         setStatus(s => ({
           ...s,
           sessionId: event.session_id as string,
@@ -461,6 +472,15 @@ export function useAgent() {
         break;
 
       case "error":
+        // Reprise auto échouée : la session persistée n'existe plus côté backend
+        // (redémarré / purgée). Le serveur a déjà émis un `session_init` neuf à la
+        // connexion (sessionStorage s'auto-répare via l'effet ci-dessous), donc on
+        // ignore juste l'erreur brute au lieu de polluer le fil.
+        if (pendingResumeRef.current) {
+          pendingResumeRef.current = null;
+          setStatus(s => ({ ...s, thinking: false }));
+          break;
+        }
         setStatus(s => ({ ...s, thinking: false }));
         setMessages(prev => [
           ...prev,
@@ -504,6 +524,7 @@ export function useAgent() {
       // premier lancement → pas de reprise, on garde l'écran d'accueil vierge.
       const resume = sessionStorage.getItem("klody_active_session");
       if (resume) {
+        pendingResumeRef.current = resume;
         ws.send(JSON.stringify({ type: "session_load", session_id: resume }));
       }
       setStatus(s => ({ ...s, connected: true }));
