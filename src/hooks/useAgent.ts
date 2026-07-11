@@ -98,6 +98,12 @@ export function useAgent() {
   // Flag : true quand l'app se démonte volontairement (cleanup useEffect).
   // Empêche ws.onclose de re-déclencher un reconnect inutile.
   const isUnmounting = useRef(false);
+  // Nombre de tentatives de reconnexion WS échouées d'affilée (remis à 0 dès
+  // qu'une connexion aboutit). Retry toutes les 3 s → sert d'horloge grossière
+  // de la durée de coupure : l'UI reste sobre tant que la relance auto du
+  // backend (LaunchAgent, ThrottleInterval 30 s + reload MLX) peut aboutir, et
+  // n'escalade vers la commande manuelle qu'au-delà.
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -501,6 +507,7 @@ export function useAgent() {
         ws.send(JSON.stringify({ type: "session_load", session_id: resume }));
       }
       setStatus(s => ({ ...s, connected: true }));
+      setReconnectAttempts(0);
       fetchStatus();
       fetchSessions();
       fetchMemories();
@@ -510,6 +517,7 @@ export function useAgent() {
       setStatus(s => ({ ...s, connected: false, thinking: false }));
       // Ne reconnect PAS si l'app se démonte volontairement (cleanup useEffect)
       if (!isUnmounting.current) {
+        setReconnectAttempts(n => n + 1);
         reconnectTimer.current = setTimeout(connect, 3000);
       }
     };
@@ -638,6 +646,7 @@ export function useAgent() {
   return {
     messages,
     status,
+    reconnectAttempts,
     sessions,
     availableModels,
     memories,

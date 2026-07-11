@@ -10,10 +10,18 @@ import { colors } from "./theme";
 
 type SidebarTab = "sessions" | "memory" | "project";
 
+// Reconnexion WS : useAgent retente toutes les 3 s. Tant que la relance auto du
+// backend (LaunchAgent com.klody.api : ThrottleInterval 30 s + reload MLX) peut
+// encore aboutir, on n'affiche qu'un bandeau sobre « Reconnexion… ». Au-delà de
+// ce seuil (~30 s de coupure continue), la relance auto a vraisemblablement
+// échoué → on escalade vers le bandeau rouge avec la commande kickstart manuelle.
+const RECONNECT_ESCALATE_ATTEMPTS = 10;
+
 export default function App() {
   const {
     messages,
     status,
+    reconnectAttempts,
     sessions,
     availableModels,
     memories,
@@ -146,33 +154,50 @@ export default function App() {
             background: colors.bg,
           }}
         >
-          {!status.connected && (
-            <div
-              role="alert"
-              style={{
-                background: colors.dangerSoft,
-                borderBottom: `1px solid ${colors.danger}`,
-                padding: "10px 16px",
-                color: colors.dangerText,
-                fontSize: "13px",
-                textAlign: "center",
-              }}
-            >
-              <strong>Backend déconnecté.</strong> Reconnexion automatique…{" "}
-              Si ça persiste, relancer l'API&nbsp;:{" "}
-              <code
+          {!status.connected &&
+            (reconnectAttempts < RECONNECT_ESCALATE_ATTEMPTS ? (
+              // Phase sobre : la relance auto du backend est encore en cours.
+              <div
+                role="status"
                 style={{
-                  background: colors.bg,
-                  border: `1px solid ${colors.danger}`,
-                  padding: "1px 6px",
-                  borderRadius: "3px",
-                  fontFamily: "inherit",
+                  background: colors.warningSoft,
+                  borderBottom: `1px solid ${colors.warning}`,
+                  padding: "10px 16px",
+                  color: colors.warningText,
+                  fontSize: "13px",
+                  textAlign: "center",
                 }}
               >
-                launchctl kickstart -k gui/$(id -u)/com.klody.api
-              </code>
-            </div>
-          )}
+                <strong>Backend indisponible.</strong> Reconnexion automatique…
+              </div>
+            ) : (
+              // Escalade : la relance auto n'a rien donné après ~30 s.
+              <div
+                role="alert"
+                style={{
+                  background: colors.dangerSoft,
+                  borderBottom: `1px solid ${colors.danger}`,
+                  padding: "10px 16px",
+                  color: colors.dangerText,
+                  fontSize: "13px",
+                  textAlign: "center",
+                }}
+              >
+                <strong>Backend toujours déconnecté.</strong> La relance auto a
+                échoué — relancer l'API&nbsp;:{" "}
+                <code
+                  style={{
+                    background: colors.bg,
+                    border: `1px solid ${colors.danger}`,
+                    padding: "1px 6px",
+                    borderRadius: "3px",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  launchctl kickstart -k gui/$(id -u)/com.klody.api
+                </code>
+              </div>
+            ))}
 
           <ChatPanel
             messages={messages}
