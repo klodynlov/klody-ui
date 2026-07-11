@@ -27,15 +27,20 @@ test.describe("smoke", () => {
     await expect(page.getByTestId("welcome-screen")).toBeVisible();
   });
 
-  test("bandeau 'Backend déconnecté' apparaît quand le WS ferme", async ({ page }) => {
+  test("bandeau de reconnexion apparaît quand le WS ferme", async ({ page }) => {
     await page.goto("/");
     await waitForWsReady(page);
 
     // Force la fermeture du fake WS
     await page.evaluate(() => (window as any).__fakeWS.close());
 
-    // L'app passe en status.connected=false → bandeau d'alerte rouge
-    await expect(page.getByRole("alert").filter({ hasText: "Backend déconnecté" })).toBeVisible();
+    // status.connected=false → phase 1 : bandeau sobre « Reconnexion… », on
+    // fait confiance à la relance auto du backend encore en cours.
+    await expect(page.getByRole("status").filter({ hasText: "Backend indisponible" })).toBeVisible();
+
+    // Le bandeau rouge (commande kickstart manuelle) ne doit PAS surgir tout de
+    // suite : il n'escalade qu'après ~30 s de reconnexions échouées.
+    await expect(page.getByRole("alert").filter({ hasText: "toujours déconnecté" })).toHaveCount(0);
   });
 
   test("session_init reçu → message vide écran d'accueil", async ({ page }) => {
