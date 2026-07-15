@@ -5,6 +5,7 @@ import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { ChatPanel } from "./components/ChatPanel";
 import { InputBar } from "./components/InputBar";
+import { ProposalCards } from "./components/ProposalCards";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { colors } from "./theme";
 
@@ -198,6 +199,8 @@ export default function App() {
                 </code>
               </div>
             ))}
+
+          {status.connected && <ProposalCards onAccept={sendMessage} />}
 
           <ChatPanel
             messages={messages}
