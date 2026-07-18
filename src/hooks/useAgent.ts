@@ -70,6 +70,19 @@ export interface AgentStatus {
 const API_BASE = "http://127.0.0.1:8000";
 const WS_URL = "ws://127.0.0.1:8000/api/ws";
 
+// Le backend a un mode de panne « hung, pas down » : le process garde la socket
+// :8000 en LISTEN mais n'accepte plus les connexions. Le noyau complète seul le
+// handshake TCP depuis le backlog → tout *paraît* joignable, mais rien ne répond
+// jamais. Sans borne de temps explicite, un fetch et un WebSocket restent en
+// attente indéfiniment au lieu d'échouer : c'est ce qui cassait la reconnexion
+// automatique. Ces deux timeouts sont ce qui transforme « pend » en « échoue »,
+// seul état depuis lequel le retry peut repartir.
+const HTTP_TIMEOUT_MS = 5000;
+// Plus permissif que HTTP : sous forte charge MLX le handshake ws peut traîner.
+// Reste très en deçà du cycle de relance du watchdog backend (~2 min), donc on
+// re-tente plusieurs fois avant que l'API ne redevienne saine.
+const WS_OPEN_TIMEOUT_MS = 8000;
+
 let msgCounter = 0;
 const uid = () => `m${++msgCounter}`;
 
@@ -113,7 +126,9 @@ export function useAgent() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE}/api/status`);
+      const r = await fetch(`${API_BASE}/api/status`, {
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+      });
       const data = await r.json();
       setStatus(s => ({
         ...s,
@@ -511,12 +526,29 @@ export function useAgent() {
   }, [status.sessionId]);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    // On sort aussi sur CONNECTING : contre un backend hung une socket peut
+    // rester bloquée là plusieurs minutes, et sans ce garde chaque retry en
+    // empilait une nouvelle (fuite, et wsRef qui perd la trace des précédentes).
+    // Le watchdog ci-dessous garantit qu'un CONNECTING se résout toujours, donc
+    // ce garde ne peut pas bloquer la reconnexion durablement.
+    const current = wsRef.current?.readyState;
+    if (current === WebSocket.OPEN || current === WebSocket.CONNECTING) return;
 
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
 
+    // Chien de garde d'ouverture. C'est `onclose` qui arme le retry 3 s — or
+    // face à un backend hung le handshake d'upgrade n'aboutit jamais et AUCUN
+    // événement ne part : ni onopen, ni onerror, ni onclose (le navigateur
+    // n'impose pas de timeout de handshake). La boucle de reconnexion mourait
+    // donc silencieusement, socket figée en CONNECTING. Ce close() forcé est ce
+    // qui produit le onclose manquant et relance le cycle.
+    const openWatchdog = setTimeout(() => {
+      if (ws.readyState === WebSocket.CONNECTING) ws.close();
+    }, WS_OPEN_TIMEOUT_MS);
+
     ws.onopen = () => {
+      clearTimeout(openWatchdog);
       // Reprise d'une session active (reconnexion ws OU reload du webview sous
       // forte charge MLX) : le backend recrée une mémoire VIDE à chaque
       // connexion → on lui renvoie session_load pour restaurer l'historique
@@ -535,6 +567,7 @@ export function useAgent() {
     };
 
     ws.onclose = () => {
+      clearTimeout(openWatchdog);
       setStatus(s => ({ ...s, connected: false, thinking: false }));
       // Ne reconnect PAS si l'app se démonte volontairement (cleanup useEffect)
       if (!isUnmounting.current) {
@@ -652,7 +685,14 @@ export function useAgent() {
     isUnmounting.current = false;
     connect();
     const ping = setInterval(() => {
-      wsRef.current?.send(JSON.stringify({ type: "ping" }));
+      // send() sur une socket en CONNECTING lève InvalidStateError — ce qui
+      // faisait sauter le fetchStatus() suivant à CHAQUE tick tant que la
+      // connexion était figée, juste au moment où l'on a le plus besoin de
+      // savoir où en est le backend. On ne parle qu'à une socket ouverte ;
+      // la sonde de statut, elle, tourne dans tous les cas.
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "ping" }));
+      }
       fetchStatus();
     }, 15000);
 
