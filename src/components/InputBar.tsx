@@ -12,8 +12,8 @@ interface Props {
   onCommand: (name: string, args: string) => void;
 }
 
-const MAX_FILE_SIZE = 50 * 1024; // 50 KB
-const MAX_IMAGE_SIZE = 12 * 1024 * 1024; // 12 Mo — doit rester ≤ VL_MAX_IMAGE_MB (backend)
+const MAX_FILE_SIZE = 250 * 1024; // 250 KB
+const MAX_IMAGE_SIZE = 60 * 1024 * 1024; // 60 Mo — doit rester ≤ VL_MAX_IMAGE_MB (backend)
 
 const ACCEPTED_EXTENSIONS = ".py,.js,.ts,.tsx,.jsx,.md,.txt,.json,.yaml,.yml,.toml,.rs,.go,.sh,.bash,.zsh,.css,.html,.xml,.sql,.env,.cfg,.ini,.log";
 const ACCEPTED_IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/gif,image/bmp";
@@ -139,7 +139,7 @@ export function InputBar({ disabled, thinking, onSend, onUploadImage, onStop, on
     setFileError(null);
 
     if (file.size > MAX_FILE_SIZE) {
-      setFileError(`Fichier trop lourd (max 50 Ko) — ${file.name} fait ${Math.round(file.size / 1024)} Ko`);
+      setFileError(`Fichier trop lourd (max 250 Ko) — ${file.name} fait ${Math.round(file.size / 1024)} Ko`);
       e.target.value = "";
       return;
     }
@@ -165,7 +165,7 @@ export function InputBar({ disabled, thinking, onSend, onUploadImage, onStop, on
     try {
       for (const file of files) {
         if (file.size > MAX_IMAGE_SIZE) {
-          setFileError(`Image trop lourde (max 12 Mo) — ${file.name} fait ${Math.round(file.size / 1024 / 1024 * 10) / 10} Mo`);
+          setFileError(`Image trop lourde (max 60 Mo) — ${file.name} fait ${Math.round(file.size / 1024 / 1024 * 10) / 10} Mo`);
           continue;
         }
         try {
