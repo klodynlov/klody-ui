@@ -1,6 +1,6 @@
 [package]
 name = "klody-ui"
-version = "2.1.0"
+version = "2.2.0"
 description = "Klody AI desktop UI (Tauri 2 + React 19)"
 authors = ["klodynlov"]
 edition = "2021"

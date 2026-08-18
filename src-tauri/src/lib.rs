@@ -1,5 +1,5 @@
 use std::net::TcpStream;
-use std::process::Child;
+use std::process::{Child, Command};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{Manager, RunEvent};
@@ -21,6 +21,39 @@ fn is_backend_running() -> bool {
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+/// Relance l'API backend possédée par le LaunchAgent `com.klody.api`.
+///
+/// Auto-remédiation SUPERVISÉE (le cockpit se répare tout seul) : quand le front
+/// n'arrive plus à reconnecter le WebSocket au-delà du palier d'escalade, il
+/// appelait jusqu'ici l'humain à taper `launchctl kickstart` à la main. On le
+/// fait désormais nous-mêmes. L'action est **réversible** : le service est
+/// `RunAtLoad` + `KeepAlive`, `kickstart -k` ne fait que le tuer puis le
+/// relaisser relancer par launchd — jamais de suppression ni d'état perdu.
+///
+/// Aucune entrée utilisateur n'est interpolée dans la commande (chaîne figée),
+/// donc pas de surface d'injection. `gui/$(id -u)` est résolu par le shell : une
+/// app GUI lancée par le Finder/launchd n'a pas d'UID fiable en variable d'env,
+/// mais `id -u` le donne toujours. Chemins absolus (`/bin/launchctl`,
+/// `/usr/bin/id`) car une app GUI hérite d'un `PATH` minimal.
+#[tauri::command]
+fn kickstart_backend() -> Result<String, String> {
+    let out = Command::new("/bin/sh")
+        .arg("-c")
+        .arg("/bin/launchctl kickstart -k gui/$(/usr/bin/id -u)/com.klody.api")
+        .output()
+        .map_err(|e| format!("launchctl introuvable : {e}"))?;
+    if out.status.success() {
+        Ok("com.klody.api relancé".into())
+    } else {
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Err(if err.is_empty() {
+            format!("launchctl a échoué (code {:?})", out.status.code())
+        } else {
+            err
+        })
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -50,7 +83,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![greet, kickstart_backend])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
