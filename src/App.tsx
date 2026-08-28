@@ -7,6 +7,8 @@ import { ChatPanel } from "./components/ChatPanel";
 import { InputBar } from "./components/InputBar";
 import { ProposalCards } from "./components/ProposalCards";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { BackendBanner } from "./components/BackendBanner";
+import { useBackendSelfHeal } from "./hooks/useBackendSelfHeal";
 import { colors } from "./theme";
 
 type SidebarTab = "sessions" | "memory" | "project";
@@ -45,6 +47,14 @@ export default function App() {
 
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("sessions");
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Auto-remédiation supervisée : passé le palier d'escalade, le cockpit relance
+  // lui-même l'API (action réversible) au lieu de demander la commande à l'humain.
+  const heal = useBackendSelfHeal({
+    connected: status.connected,
+    reconnectAttempts,
+    escalateAt: RECONNECT_ESCALATE_ATTEMPTS,
+  });
 
   // Exécution des commandes "/" (famille Mémoire & projet) — actions
   // déterministes via REST/onglets, sans round-trip LLM.
@@ -155,50 +165,12 @@ export default function App() {
             background: colors.bg,
           }}
         >
-          {!status.connected &&
-            (reconnectAttempts < RECONNECT_ESCALATE_ATTEMPTS ? (
-              // Phase sobre : la relance auto du backend est encore en cours.
-              <div
-                role="status"
-                style={{
-                  background: colors.warningSoft,
-                  borderBottom: `1px solid ${colors.warning}`,
-                  padding: "10px 16px",
-                  color: colors.warningText,
-                  fontSize: "13px",
-                  textAlign: "center",
-                }}
-              >
-                <strong>Backend indisponible.</strong> Reconnexion automatique…
-              </div>
-            ) : (
-              // Escalade : la relance auto n'a rien donné après ~30 s.
-              <div
-                role="alert"
-                style={{
-                  background: colors.dangerSoft,
-                  borderBottom: `1px solid ${colors.danger}`,
-                  padding: "10px 16px",
-                  color: colors.dangerText,
-                  fontSize: "13px",
-                  textAlign: "center",
-                }}
-              >
-                <strong>Backend toujours déconnecté.</strong> La relance auto a
-                échoué — relancer l'API&nbsp;:{" "}
-                <code
-                  style={{
-                    background: colors.bg,
-                    border: `1px solid ${colors.danger}`,
-                    padding: "1px 6px",
-                    borderRadius: "3px",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  launchctl kickstart -k gui/$(id -u)/com.klody.api
-                </code>
-              </div>
-            ))}
+          {!status.connected && (
+            <BackendBanner
+              escalated={reconnectAttempts >= RECONNECT_ESCALATE_ATTEMPTS}
+              heal={heal}
+            />
+          )}
 
           {status.connected && <ProposalCards onAccept={sendMessage} />}
 

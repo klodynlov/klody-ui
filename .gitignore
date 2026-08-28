@@ -7,6 +7,10 @@ src-tauri/target/
 # Claude Code worktrees / state
 .claude/
 
+# Runtime status snapshots écrits par le backend (état, pas source)
+status.json
+status.timing
+
 # Playwright
 test-results/
 playwright-report/

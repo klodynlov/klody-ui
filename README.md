@@ -4,8 +4,9 @@ Application native macOS + web pour [Klody Code AI](https://github.com/klodynlov
 chat avec un agent de coding local, visualisation des décisions du router et
 des actions exécutées en temps réel.
 
-> **Status** : v2.1 — light theme warm, composants v2 (router/sandbox/best-of-N/conventions),
-> auto-spawn backend en mode Tauri natif.
+> **Status** : v2.2 — light theme warm, composants v2 (router/sandbox/best-of-N/conventions),
+> **auto-remédiation supervisée du backend** (le cockpit relance l'API lui-même
+> en cas de coupure prolongée — cf. « Autonomie »).
 
 ---
 
@@ -13,9 +14,9 @@ des actions exécutées en temps réel.
 
 | Composant | Tech |
 |---|---|
-| Frontend | **React 19** + **TypeScript 5.8** |
+| Frontend | **React 19** + **TypeScript 7** |
 | Styling | **Tailwind CSS 4** (utility classes + CSS vars du theme) |
-| Bundler | **Vite 7** |
+| Bundler | **Vite 8** |
 | Desktop | **Tauri 2** (Rust + WebView macOS) |
 | Markdown | `react-markdown` |
 | Communication backend | **WebSocket** (`ws://localhost:8000/api/ws`) + REST `GET /api/status` |
@@ -50,13 +51,15 @@ npm run tauri dev
 npm run tauri build
 ```
 
-L'app Tauri native **auto-spawn le backend FastAPI** au démarrage et le tue à
-la fermeture (cf `src-tauri/src/lib.rs`). Plus besoin de lancer
-`python api/server.py` manuellement.
+L'app **ne démarre aucun service**. L'API `:8000` (LaunchAgent `com.klody.api`)
+et le worker MLX `:8080` (`com.klody.core-gateway`) sont possédés par des
+LaunchAgents `RunAtLoad` + `KeepAlive`. Le front reconnecte le WebSocket tout
+seul et, en cas de coupure prolongée, **relance l'API lui-même** (cf. [Autonomie](#autonomie--auto-remédiation-supervisée)).
 
-Le backend est résolu via :
-1. Variable d'env `KLODY_DIR` si définie
-2. Sinon, sibling du dossier de l'exécutable Tauri (layout `~/Projets/klody-code-ai`)
+> Historique : l'app spawnait le backend elle-même — supprimé car un double
+> `spawn` MLX au boot à froid créait une course sur `:8080` (« Address already in
+> use ») + deux modèles 35B en RAM. Propriétaire unique = LaunchAgent (cf.
+> `src-tauri/src/lib.rs`).
 
 ---
 
@@ -137,6 +140,32 @@ Tous les events sont typés dans [`src/hooks/useAgent.ts`](src/hooks/useAgent.ts
 
 ---
 
+## Autonomie — auto-remédiation supervisée
+
+Le backend a un mode de panne « hung, pas down » (socket `:8000` en `LISTEN`
+mais plus aucune réponse). Le front le détecte via des timeouts explicites
+(`HTTP_TIMEOUT_MS`, `WS_OPEN_TIMEOUT_MS` dans `useAgent.ts`) et reconnecte le
+WebSocket toutes les 3 s.
+
+Tant que la relance auto du LaunchAgent (`KeepAlive`, `ThrottleInterval` 30 s)
+peut aboutir, l'UI reste sobre (« Reconnexion automatique… »). **Passé
+`RECONNECT_ESCALATE_ATTEMPTS` (~30 s de coupure continue), le cockpit prend la
+main et relance l'API lui-même** — au lieu de demander à l'humain de taper la
+commande `launchctl kickstart`.
+
+- Côté Rust : commande `kickstart_backend` (`src-tauri/src/lib.rs`) →
+  `launchctl kickstart -k gui/$(id -u)/com.klody.api`. Chaîne figée (aucune
+  entrée utilisateur interpolée), chemins absolus.
+- Côté React : `useBackendSelfHeal` (`src/hooks/useBackendSelfHeal.ts`) relance
+  à chaque palier (~30 s), **plafonné à `MAX_AUTO_KICKS` = 3**.
+
+« Supervisée » = l'action est **réversible** (redémarrage d'un service
+`KeepAlive`, aucun état perdu) et **bornée** : après 3 relances infructueuses, on
+rend la main à l'humain (bouton « Relancer l'API », ou commande à copier en mode
+web hors Tauri). Rien d'irréversible n'est jamais fait automatiquement.
+
+---
+
 ## Notes React 19
 
 Le `<React.StrictMode>` est **désactivé** dans [`src/main.tsx`](src/main.tsx) :
@@ -158,9 +187,9 @@ npm run tauri build
 # → src-tauri/target/release/bundle/dmg/Klody_X.Y.Z_aarch64.dmg
 ```
 
-L'app finale embarque le binaire Rust + le bundle Vite. Au lancement, elle
-auto-spawn le backend Python (qui doit donc être installé sur la machine
-cible — voir [klody-code-ai](https://github.com/klodynlov/klody-code-ai)).
+L'app finale embarque le binaire Rust + le bundle Vite. Le backend Python doit
+être installé et piloté par ses LaunchAgents sur la machine cible (voir
+[klody-code-ai](https://github.com/klodynlov/klody-code-ai)).
 
 ---
 
