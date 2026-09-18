@@ -26,7 +26,7 @@ class ActiveMedicalV8Tests(unittest.TestCase):
                 client=TestClient(server.app);headers={'X-Klody-Studio':'1'}
                 response=client.post('/api/chat',json={'model':'medical','question':'hernie'},headers=headers)
                 self.assertEqual(response.status_code,202)
-                self.assertEqual(Path(engine.commands(response.json())[0][1]).name,'medical_documentary_v8_worker.py')
+                self.assertEqual(Path(engine.commands(response.json())[0][1]).name,'medical_french_worker.py')
                 self.assertEqual(client.post('/api/train',json={'model':'medical','name':'test','iterations':2},headers=headers).status_code,409)
                 self.assertEqual(len(engine.jobs),1)
 
