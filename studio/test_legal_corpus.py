@@ -5,12 +5,14 @@ import sqlite3
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from legal_corpus.build import parse_record, content, passages, setup, apply_archive, index_and_audit
 from legal_corpus.download import sha
 from legal_corpus.search import retrieve, active, messages, citation_audit
 from legal_corpus.administrative import parse_administrative
 from legal_corpus.financial import parse_html
+from legal_corpus.activate import activate
 
 
 CODES = {'LEGITEXT000006070721':dict(legi_id='LEGITEXT000006070721',title='Code civil')}
@@ -102,6 +104,32 @@ class LegalCorpusTests(unittest.TestCase):
             c=archive('delete.tar.gz','LEGI',[('liste_suppression_legi.dat',b'path/article/LEGIARTI123\n')])
             apply_archive(db,c,'2026-09-18',CODES)
             self.assertEqual(db.execute("SELECT count(*) FROM documents WHERE kind='code'").fetchone()[0],0)
+
+    def test_activation_refuses_partial_index_and_detects_manifest_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);edition=root/'corpora/edition';edition.mkdir(parents=True)
+            (root/'data').mkdir()
+            db=sqlite3.connect(edition/'index.sqlite');setup(db,'2026-09-18')
+            for row in [parse_record(article(),'LEGI','2026-09-18',CODES),parse_record(decision(),'CASS','2026-09-18',CODES)]:
+                db.execute('INSERT INTO documents VALUES(?,?,?,?,?,?,?)',
+                    (row['id'],row['kind'],row['source_id'],row['number'],row['title'],row.get('decision_date',''),json.dumps(row)))
+            db.commit()
+            fixture=root/'catalog.json';fixture.write_text(json.dumps({'codes':list(CODES.values())}))
+            manifest={'archives':[]};(edition/'archives.json').write_text(json.dumps(manifest))
+            with patch('legal_corpus.build.CATALOG',fixture):
+                index_and_audit(db,edition,'2026-09-18',manifest)
+                db.execute('DELETE FROM search WHERE rowid=(SELECT min(rowid) FROM search)');db.commit()
+                with self.assertRaisesRegex(ValueError,'incomplete'):activate(root,edition)
+                self.assertFalse((root/'data/active_corpus.json').exists())
+                index_and_audit(db,edition,'2026-09-18',manifest)
+            db.close()
+            selected=activate(root,edition)
+            self.assertFalse(selected['adapter_changed'])
+            self.assertEqual(active(root),edition.resolve())
+            backup=json.loads((root/selected['previous_pointer']).read_text())
+            self.assertIsNone(backup['previous'])
+            with (edition/'coverage.json').open('a') as f:f.write(' ')
+            with self.assertRaisesRegex(ValueError,'manifeste'):active(root)
 
     def test_active_pointer_cannot_escape_corpus_directory(self):
         with tempfile.TemporaryDirectory() as directory:

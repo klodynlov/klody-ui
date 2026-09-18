@@ -19,4 +19,19 @@ test('legal coverage separates indexed sources from training and discloses missi
     'https://www.legifrance.gouv.fr/codes/id/LEGITEXT000006070721');
   await expect(page.getByText('636', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Entraîner Juridique V3', exact: true })).toBeDisabled();
+  await page.route('http://127.0.0.1:8018/api/chat', route => route.fulfill({ json: {
+    id: 'c'.repeat(32), kind: 'chat', model: 'legal', status: 'completed', created: 1,
+    question: 'Une décision du Conseil d’État', result: {
+      answer: 'Extrait : « Le recours est rejeté. » [DCE_42]', confidence: {level: 'unverified'},
+      sources: [{title: 'Conseil d’État · décision du 2026-09-01', text: 'Le recours est rejeté.',
+        source_url: 'https://opendata.justice-administrative.fr/DCE/2026/09/CE_202609.zip',
+        archive_member: 'DCE_42_20260901.xml'}],
+    },
+  } }));
+  await page.locator('.st-model-card.legal').getByRole('button', { name: 'Discuter', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Votre question' }).fill('Une décision du Conseil d’État');
+  await page.getByRole('button', { name: 'Envoyer la question', exact: true }).click();
+  await expect(page.locator('.st-sources').getByRole('link', {name: 'Ouvrir l’archive officielle ↗'}))
+    .toHaveAttribute('href', 'https://opendata.justice-administrative.fr/DCE/2026/09/CE_202609.zip');
+  await expect(page.locator('.st-sources')).toContainText('DCE_42_20260901.xml');
 });
