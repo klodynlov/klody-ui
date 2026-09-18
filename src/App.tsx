@@ -1,3 +1,4 @@
+import { Studio } from "./components/studio/Studio";
 import "./index.css";
 import { useCallback, useEffect, useState } from "react";
 import { useAgent } from "./hooks/useAgent";
@@ -20,7 +21,7 @@ type SidebarTab = "sessions" | "memory" | "project";
 // échoué → on escalade vers le bandeau rouge avec la commande kickstart manuelle.
 const RECONNECT_ESCALATE_ATTEMPTS = 10;
 
-export default function App() {
+function AgentApp() {
   const {
     messages,
     status,
@@ -196,4 +197,15 @@ export default function App() {
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
+}
+
+// The Studio owns its local engine; mounting it does not start agent reconnects.
+export default function App() {
+  const [studio, setStudio] = useState(() => window.location.hash.startsWith("#studio"));
+  useEffect(() => {
+    const update = () => setStudio(window.location.hash.startsWith("#studio"));
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  return studio ? <Studio /> : <AgentApp />;
 }

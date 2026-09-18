@@ -15,3 +15,7 @@ status.timing
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Local model Studio state and native backups
+docs/studio/backups/
+studio/__pycache__/
