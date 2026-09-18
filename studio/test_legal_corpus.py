@@ -50,6 +50,8 @@ class LegalCorpusTests(unittest.TestCase):
         self.assertEqual(row['number'],'24-12345')
         self.assertEqual(row['official_number'],'12500042')
         self.assertIn('CCASS',row['ecli'])
+        with self.assertRaisesRegex(ValueError,'Implausible'):
+            parse_record(decision().replace(b'2025-02-01',b'0201-02-01'),'CAPP','2026-09-18',CODES)
 
     def test_entities_rejected_and_chunks_are_exact_complete_slices(self):
         with self.assertRaises(ValueError):
@@ -96,6 +98,9 @@ class LegalCorpusTests(unittest.TestCase):
             found=retrieve('Que dit l’article 1240 du Code civil ?',root/'index.sqlite')
             self.assertEqual(found[0]['document_id'],'LEGIARTI123')
             self.assertEqual(found[0]['kind'],'code')
+            self.assertEqual(len(found),1)
+            self.assertEqual(retrieve('Article 999999 du Code civil : dommage ?',root/'index.sqlite'),[])
+            self.assertEqual(retrieve('Solution de JURITEXT999999 dommage cassation',root/'index.sqlite'),[])
             found=retrieve('Jurisprudence dommage cassation',root/'index.sqlite')
             self.assertEqual(found[0]['kind'],'decision')
             found=retrieve('Jurisprudence dommage du Code civil',root/'index.sqlite')
@@ -104,6 +109,10 @@ class LegalCorpusTests(unittest.TestCase):
             c=archive('delete.tar.gz','LEGI',[('liste_suppression_legi.dat',b'path/article/LEGIARTI123\n')])
             apply_archive(db,c,'2026-09-18',CODES)
             self.assertEqual(db.execute("SELECT count(*) FROM documents WHERE kind='code'").fetchone()[0],0)
+            broken=archive('broken-update.tar.gz','CASS',[('JURITEXT123.xml',b'<broken>')])
+            apply_archive(db,broken,'2026-09-18',CODES)
+            self.assertEqual(db.execute('SELECT count(*) FROM documents').fetchone()[0],0)
+            self.assertEqual(db.execute('SELECT count(*) FROM rejected').fetchone()[0],1)
 
     def test_activation_refuses_partial_index_and_detects_manifest_changes(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -155,6 +164,17 @@ class LegalCorpusTests(unittest.TestCase):
         self.assertIn('Conseil d’État',row['jurisdiction'])
         self.assertEqual(row['number'],'42')
         self.assertIn('\n',row['text'])
+
+    def test_administrative_ordonnance_identifier_is_searchable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);db=sqlite3.connect(root/'index.sqlite');setup(db,'2026-09-18')
+            row=parse_record(decision(),'JADE','2026-09-18',CODES)
+            row.update(id='ORCE_449513_20210610',source_id='DCE',jurisdiction='Conseil d’État')
+            db.execute('INSERT INTO documents VALUES(?,?,?,?,?,?,?)',
+                (row['id'],row['kind'],row['source_id'],row['number'],row['title'],row['decision_date'],json.dumps(row)))
+            db.commit();index_and_audit(db,root,'2026-09-18',{'archives':[]})
+            found=retrieve('Décision ORCE_449513_20210610',root/'index.sqlite')
+            self.assertEqual(found[0]['document_id'],row['id'])
 
     def test_financial_date_is_pronouncement_not_cited_law(self):
         archive=dict(fund='CDC',url='https://static.data.gouv.fr/example.zip',

@@ -90,6 +90,8 @@ def parse_record(raw, fund, as_of, codes):
         if not court or not when:
             raise ValueError('Missing court/date: ' + ident)
         date.fromisoformat(when)
+        if when < '1600-01-01':
+            raise ValueError('Implausible decision date: ' + ident + ' ' + when)
         if when > as_of:
             return dict(remove=ident)
         title = value(root, './/TITRE')
@@ -164,6 +166,11 @@ def apply_archive(db, archive, as_of, codes):
                 try:
                     row = parse_record(raw, archive['fund'], as_of, codes)
                 except (ET.ParseError, ValueError) as exc:
+                    # A rejected update must not leave an older accepted text
+                    # silently serving as the current version of that record.
+                    ident = Path(member.name).stem
+                    if re.fullmatch(r'(?:LEGIARTI|JURITEXT|CETATEXT|CONSTEXT)\d+', ident):
+                        db.execute('DELETE FROM documents WHERE id=?', (ident,))
                     db.execute('INSERT INTO rejected VALUES(?,?,?)', (path.name,member.name,str(exc)))
                     stats['rejected'] += 1
                     continue

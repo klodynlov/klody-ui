@@ -78,6 +78,7 @@ def retrieve(question,index,limit=5,source_ids=None):
         return []
     tokens = list(dict.fromkeys(t for t in re.findall(r'[a-z0-9]+',norm(question))
                                if len(t)>=3 and t not in STOP))[:30]
+    judicial_question = bool(re.search(r'\b(jurisprudence|arret|arrets|decision|decisions|cassation)\b',norm(question)))
     filters = source_ids if source_ids is not None else inferred_codes(question)
     if source_ids is not None and not source_ids:
         return []
@@ -94,7 +95,7 @@ def retrieve(question,index,limit=5,source_ids=None):
                 " WHERE json_extract(d.data,'$.ecli')=?"+decision_clause+' ORDER BY p.start LIMIT ?',
                 [ecli.rstrip('.'),*decision_filters,limit]).fetchall()
             found.extend(result(r) for r in rows)
-        ids = re.findall(r'\b(?:(?:LEGIARTI|JURITEXT|CETATEXT|CONSTEXT|JF)\d+|(?:DCE|DCA|DTA)_[\w]+|FIN-[A-Fa-f0-9]+)\b',question,re.I)
+        ids = re.findall(r'\b(?:(?:LEGIARTI|JURITEXT|CETATEXT|CONSTEXT|JF)\d+|[A-Z]{2,8}_[A-Z0-9_]+|FIN-[A-Fa-f0-9]+)\b',question,re.I)
         for ident in ids:
             ident='FIN-'+ident[4:].lower() if ident.upper().startswith('FIN-') else ident.upper()
             code_ref=ident.startswith('LEGIARTI')
@@ -114,10 +115,14 @@ def retrieve(question,index,limit=5,source_ids=None):
                 " WHERE d.kind='code' AND replace(replace(upper(d.number),' ',''),'.','')=?"+clause+
                 ' ORDER BY d.source_id,p.start LIMIT ?', [number,*filters,limit]).fetchall()
             found.extend(result(r) for r in rows)
+        # An explicit document/reference query must not be padded with unrelated
+        # judgments matching generic words such as "solution" or "passage".
+        # Unknown explicit IDs return no source instead of a plausible substitute.
+        if eclis or ids or numbers or (filters and reference_numbers(question) and not judicial_question):
+            return list({s['id']:s for s in found}.values())[:limit]
         if tokens:
             match = ' OR '.join('"'+t+'"' for t in tokens)
-            q = norm(question)
-            kinds = ['decision','code'] if re.search(r'\b(jurisprudence|arret|arrets|decision|decisions|cassation)\b',q) else ['code','decision']
+            kinds = ['decision','code'] if judicial_question else ['code','decision']
             for kind in kinds:
                 selected_filters = decision_filters if kind == 'decision' else filters
                 filtered='kind:"'+kind+'" AND ('+match+')'
