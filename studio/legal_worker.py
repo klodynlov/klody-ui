@@ -5,6 +5,15 @@ from pathlib import Path
 import sys
 from legal_model import profile, display_source, audit_notice
 from models import MODELS
+from legal_corpus import search as corpus_search
+
+
+def retrieve_sources(root, question):
+    expanded = corpus_search.active(root)
+    if expanded:
+        return corpus_search.retrieve(question, expanded / 'index.sqlite', limit=5)
+    from legal import retrieve
+    return retrieve(question, limit=5)
 
 
 def run(job, save):
@@ -23,21 +32,31 @@ def run(job, save):
             'system_prompt_sha256': selected['system_prompt_sha256'], 'base_model': selected['base_model'],
             'experimental': True}
     save(data)
-    sources = retrieve(job['question'], limit=5)
+    sources = retrieve_sources(root, job['question'])
+    expanded = corpus_search.active(root)
+    if expanded:
+        data['corpus'] = json.loads((expanded / 'coverage.json').read_text())
     data['sources'] = [display_source(s) for s in sources]
     if not sources:
-        data.update(answer='SOURCES_INSUFFISANTES: aucun article retrouvé. Précisez la question et le code concerné.',
+        data.update(answer='SOURCES_INSUFFISANTES: aucun texte retrouvé. Précisez la question, le code ou la référence de la décision.',
                     phase='done', confidence={'level': 'insufficient'})
         save(data)
         return
     data['phase'] = 'generation'; save(data)
     model, tokenizer = load_model(adapter=selected['adapter_path'])
-    turns = messages(job['question'], sources)
+    turns = (corpus_search.messages(job['question'], sources, selected['system_prompt'])
+             if expanded else messages(job['question'], sources))
     turns[0]['content'] = selected['system_prompt']
     prompt = tokenizer.apply_chat_template(turns, tokenize=False, add_generation_prompt=True)
     data['prompt_tokens'] = len(tokenizer.encode(prompt, add_special_tokens=False))
+    while expanded and data['prompt_tokens'] > 10000 and len(sources) > 1:
+        sources.pop()
+        turns=corpus_search.messages(job['question'],sources,selected['system_prompt'])
+        prompt=tokenizer.apply_chat_template(turns,tokenize=False,add_generation_prompt=True)
+        data['prompt_tokens']=len(tokenizer.encode(prompt,add_special_tokens=False))
+    data['sources']=[display_source(s) for s in sources]
     if data['prompt_tokens'] > 10000:
-        raise ValueError('Ces articles dépassent le contexte du pilote. Posez une question plus ciblée avec le numéro de l’article.')
+        raise ValueError('Ces sources dépassent le contexte du pilote. Posez une question plus ciblée avec une référence précise.')
     from mlx_lm import stream_generate
     from mlx_lm.sample_utils import make_sampler
     for chunk in stream_generate(model, tokenizer, prompt=prompt, max_tokens=500, sampler=make_sampler(temp=0.0)):
@@ -45,7 +64,8 @@ def run(job, save):
         if chunk.finish_reason:
             data['finish_reason'] = chunk.finish_reason
         save(data)
-    data['citation_audit'] = citation_audit(data['answer'], sources)
+    data['citation_audit'] = (corpus_search.citation_audit(data['answer'],sources) if expanded
+                              else citation_audit(data['answer'], sources))
     data['excerpt_audit'] = excerpt_audit(data['answer'], sources)
     data['audit_notice'] = audit_notice(data['citation_audit'], data['excerpt_audit'])
     if data.get('finish_reason') == 'length':

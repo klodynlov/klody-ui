@@ -65,7 +65,7 @@ class LegalIntegrationTests(unittest.TestCase):
         sys.path.insert(0, str(ROOT))
         import legal
         saved = []
-        with patch.object(legal, 'retrieve', return_value=[]), patch.object(legal, 'load_model') as load:
+        with patch.object(worker, 'retrieve_sources', return_value=[]), patch.object(legal, 'load_model') as load:
             worker.run({'model': 'legal', 'question': 'Question sans source', 'history': []}, lambda data: saved.append(dict(data)))
         load.assert_not_called()
         self.assertIn('SOURCES_INSUFFISANTES', saved[-1]['answer'])

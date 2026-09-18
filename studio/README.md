@@ -11,6 +11,11 @@ Le registre `models.py` indique les projets attendus sous `~/Projets`.
 En leur absence, le catalogue signale les modèles indisponibles. Il ne télécharge
 ni n’entraîne un modèle automatiquement.
 
+Le profil Juridique V3 peut consulter une édition documentaire séparée couvrant
+les 76 codes français et plusieurs fonds de jurisprudence française. Le
+[guide du corpus juridique](legal_corpus/README.md) décrit l’acquisition,
+l’activation, le retour à l’ancien corpus et les limites de couverture.
+
 Le lecteur médical V8 exige le profil évalué de `LibraryBrainMedical`, ses
 artefacts et son runtime figé. Les empreintes restent vérifiées avant chaque
 exécution. La traduction locale dispose de contrôles des valeurs numériques

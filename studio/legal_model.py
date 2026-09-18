@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+from legal_corpus.search import active
 
 PROFILE = 'profiles/lora-v3-experimental.json'
 EXPERIMENT = 'experiments/20260910-lora-v3'
@@ -48,12 +49,32 @@ def model_info(root, spec, ident):
         info['dataset'] = read(root / EXPERIMENT / 'data/manifest.json')['counts']
         decision = read(root / EXPERIMENT / 'release_decision.json')
         info.update(evaluated=True, legal_assessment=decision['heldout_counts'])
+        corpus = active(root)
+        if corpus:
+            coverage = read(corpus / 'coverage.json')
+            info['corpus'] = coverage
+            info['description'] = (f"Lire et citer {coverage['code_count']} codes français et "
+                f"{coverage['decisions']:,} décisions publiées, avec leurs sources et dates. "
+                "Couverture de la jurisprudence détaillée ci-dessous.").replace(',', ' ')
+            info['domains'] = ['Codes français', 'Jurisprudence française', 'Sources et dates']
     except (OSError, ValueError, KeyError) as exc:
+        info['available'] = False
         info['availability_error'] = str(exc)
     return info
 
 
 def display_source(source):
+    if source.get('kind') == 'decision':
+        reference = f" · n° {source['number']}" if source['number'] else ''
+        when = source.get('date_basis', 'décision du') + ' ' + source['decision_date']
+        return {**source, 'title': f"{source['jurisdiction']} · {when}{reference} [{source['id']}]",
+                'author': f"Source officielle · {source['fund']} · " +
+                          ('passage de la décision' if source.get('is_excerpt') else 'décision intégrale'),
+                'page': None}
+    if source.get('kind') == 'code':
+        return {**source, 'title': f"{source['title']} · article {source['number']} [{source['id']}]",
+                'author': f"Légifrance · version depuis le {source['valid_from']} · corpus au {source['generated_date']}",
+                'page': None}
     return {**source, 'title': f"{source['title']} · article {source['number']} [{source['id']}]",
             'author': f"Légifrance · export {source['generated_date']} · dernière modification {source['last_modified']}",
             'page': source['pages'][0] if source['pages'] else None}
