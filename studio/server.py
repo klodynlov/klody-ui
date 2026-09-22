@@ -127,9 +127,13 @@ class Engine:
 
     def commands(self, job):
         model = job['model']; root = source_root(model)
+        if job['kind'] == 'music_import':
+            return [[str(PYTHON), str(HERE/'music_import_worker.py'), str(self.state/job['id']/'request.json')]]
         if job['kind'] == 'translate':
             return [[str(PYTHON), str(HERE/'medical_translation_worker.py'), str(self.state/job['id']/'request.json')]]
         if job['kind'] == 'chat':
+            if job.get('music_project_id'):
+                return [[str(PYTHON), str(HERE/'music_worker.py'), str(self.state/job['id']/'request.json')]]
             return [[str(PYTHON), str(HERE / MODELS[model].get('worker', 'worker.py')), str(self.state / job['id'] / 'request.json')]]
         if job['kind'] == 'train':
             target = self.state / 'versions' / job['id']
@@ -392,6 +396,9 @@ def feedback(body: Feedback):
     ident=uuid.uuid4().hex
     write(engine.state/'feedback'/f'{ident}.json',{'id':ident,'model':job['model'],'question':job['question'],'answer':result,'correction':body.correction,'status':'pending_review','created':time.time()})
     return {'id':ident,'status':'pending_review'}
+
+from music_assistant import register_routes as register_music_routes
+register_music_routes(app, lambda: engine)
 
 @app.get('/{path:path}')
 def frontend(path: str):
