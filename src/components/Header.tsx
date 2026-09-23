@@ -102,6 +102,7 @@ export function Header({ status, availableModels, onModelChange, onNewSession, o
         </span>
       </div>
 
+      <a href="#music" style={{ color: colors.primary, fontSize: "12px", textDecoration: "none", padding: "6px 10px", border: `1px solid ${colors.border}`, borderRadius: radii.md, flexShrink: 0 }}>♫ Atelier musique</a>
       <a href="#studio" style={{ color: colors.primary, fontSize: "12px", textDecoration: "none", padding: "6px 10px", border: `1px solid ${colors.border}`, borderRadius: radii.md }}>✳ Studio des modèles</a>
 
       <div style={{ flex: 1 }} />
