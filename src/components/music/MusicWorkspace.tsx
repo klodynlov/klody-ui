@@ -61,6 +61,7 @@ export function MusicWorkspace() {
   const methods = { ...defaults, ...overview?.methods };
   const preferences = preferenceDraft || overview?.preferences || { instructions: '', revision: 0 };
   const pending = jobs.some(active);
+  const canSend = !busy && !pending && !importing && connected && !!overview?.engine.available && draft.question.trim().length >= 2;
   const dirty = JSON.stringify(project) !== JSON.stringify(saved || EMPTY);
 
   useEffect(() => {
@@ -111,12 +112,13 @@ export function MusicWorkspace() {
   function choose(id: string) {
     setWorkspace(w => ({ ...w, selected: id })); setError(''); setNotice(''); setJobs([]);
   }
-  async function persist(): Promise<Project> {
-    if (!project.title.trim()) throw new Error('Donnez un nom à votre morceau avant de continuer.');
+  async function persist(firstQuestion?: string): Promise<Project> {
+    const title = project.title.trim() || (selected === 'new' ? firstQuestion?.trim().replace(/\s+/g, ' ').slice(0, 100) : '');
+    if (!title) throw new Error('Donnez un nom à votre morceau avant de continuer.');
     if (project.bpm !== null && (!Number.isFinite(project.bpm) || project.bpm < 20 || project.bpm > 400)) throw new Error('Le tempo doit être compris entre 20 et 400 noires par minute.');
     if (project.meter && !/^(?:[1-9]|[12]\d|3[0-2])\/(?:1|2|4|8|16|32)$/.test(project.meter)) throw new Error('Indiquez une mesure comme 4/4, 3/4 ou 6/8, ou laissez ce champ vide.');
     if (saved && !dirty) return saved;
-    const result = await request<Project>(selected === 'new' ? '/music/projects' : `/music/projects/${selected}`, project);
+    const result = await request<Project>(selected === 'new' ? '/music/projects' : `/music/projects/${selected}`, { ...project, title });
     const id = result.id!;
     setOverview(o => o ? { ...o, projects: [result, ...o.projects.filter(p => p.id !== id)] } : o);
     setWorkspace(w => {
@@ -133,10 +135,10 @@ export function MusicWorkspace() {
     finally { setBusy(false); }
   }
   async function send() {
-    if (busy || pending || importing || !draft.question.trim()) return;
+    if (!canSend) return;
     setBusy(true); setError(''); setNotice('');
     try {
-      const result = await persist();
+      const result = await persist(draft.question);
       const id = result.id!;
       const retry = draft.pending?.question === draft.question && draft.pending.mode === draft.mode ? draft.pending :
         { id: crypto.randomUUID().replace(/-/g, ''), question: draft.question, mode: draft.mode };
@@ -167,6 +169,7 @@ export function MusicWorkspace() {
   return <div className="music-workspace">
     <aside className="mw-sidebar">
       <a className="mw-brand" href="#studio">klody<span>atelier local</span></a>
+      <a className="mw-library" href="#">← Assistant Klody</a>
       <nav aria-label="Assistants spécialisés" className="mw-specialists">
         <a href="#music" aria-current="page">♫ Musique</a>
         <a href="#studio/legal">§ Juridique <span>Lecteur V3</span></a>
@@ -204,8 +207,11 @@ export function MusicWorkspace() {
           </div>
           <form className="mw-composer" onSubmit={e => { e.preventDefault(); void send(); }}>
             <label htmlFor="music-question">Votre demande</label>
-            <textarea id="music-question" maxLength={4000} value={draft.question} disabled={busy} onChange={e => update({ question: e.target.value })} placeholder="Mon refrain manque de contraste. Je voudrais…" />
-            <div><small>La fiche sera enregistrée avec votre demande.</small><button type="submit" disabled={busy || pending || importing || !connected || !overview?.engine.available || !draft.question.trim() || !project.title.trim()}>{busy ? 'Envoi…' : importing ? 'Import en cours…' : pending ? 'Réponse en cours…' : 'Envoyer →'}</button></div>
+            <textarea id="music-question" aria-describedby="music-send-help" maxLength={4000} value={draft.question} disabled={busy} onChange={e => update({ question: e.target.value })} onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); }
+            }} placeholder="Mon refrain manque de contraste. Je voudrais…" />
+            <div><small id="music-send-help">{selected === 'new' && !project.title.trim() ? 'Votre première demande nommera le morceau. Vous pourrez le renommer.' : 'La fiche sera enregistrée avec votre demande.'}<br />Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne.</small><button type="submit" disabled={!canSend}>{busy ? 'Envoi…' : importing ? 'Import en cours…' : pending ? 'Réponse en cours…' : 'Envoyer →'}</button></div>
+            {connected && overview && !overview.engine.available && <p className="mw-alert" role="status">{overview.engine.message}</p>}
           </form>
           <p className="mw-boundary">Conseils à partir de votre contexte, des extraits et des mesures disponibles. L’IA n’écoute pas le son et ne modifie pas Ableton.</p>
         </section>

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { installFakeWebSocket, stubRest } from './fixtures';
 
 const methods = {
   structure: { title: 'Construire la structure', question: 'Propose deux structures pour mon morceau.' },
@@ -52,6 +53,45 @@ async function setup(page: Page, answer = '**Proposition à essayer :** alléger
   await expect(page.getByText('Moteur local · 35B', { exact: true })).toBeVisible();
   return { projects, sent };
 }
+
+test('native home exposes the music workspace and a return to the assistant', async ({ page }) => {
+  await installFakeWebSocket(page);
+  await stubRest(page);
+  await setup(page);
+  await page.getByRole('link', { name: '← Assistant Klody', exact: true }).click();
+  await page.getByRole('link', { name: '♫ Atelier musique', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Faisons avancer votre morceau.' })).toBeVisible();
+});
+
+test('first question creates a named project without a mandatory title; Shift+Enter stays a newline', async ({ page }) => {
+  const { projects, sent } = await setup(page);
+  const question = page.getByLabel('Votre demande', { exact: true });
+  await question.fill('Comment ouvrir mon refrain ?');
+  await expect(page.getByRole('button', { name: 'Envoyer →', exact: true })).toBeEnabled();
+  await question.press('Shift+Enter');
+  await expect(question).toHaveValue('Comment ouvrir mon refrain ?\n');
+  expect(sent).toHaveLength(0);
+  await question.press('Enter');
+  await expect(page.getByText('Proposition à essayer :', { exact: true })).toBeVisible();
+  expect(projects).toHaveLength(1);
+  expect(projects[0].title).toBe('Comment ouvrir mon refrain ?');
+  expect(sent).toHaveLength(1);
+  await page.reload();
+  await expect(page.getByLabel('Titre', { exact: true })).toHaveValue('Comment ouvrir mon refrain ?');
+});
+
+test('offline engine explains why sending is unavailable and keeps the question', async ({ page }) => {
+  await setup(page);
+  await page.route('http://127.0.0.1:8018/api/music', route => route.fulfill({ json: {
+    projects: [], methods, engine: { available: false, message: 'Le moteur local ne répond pas. Vos projets restent enregistrés.' },
+  } }));
+  await page.reload();
+  await page.getByLabel('Votre demande', { exact: true }).fill('Comment ouvrir mon refrain ?');
+  await expect(page.getByRole('status')).toContainText('Le moteur local ne répond pas.');
+  await expect(page.getByRole('button', { name: 'Envoyer →', exact: true })).toBeDisabled();
+  await page.getByLabel('Votre demande', { exact: true }).press('Enter');
+  await expect(page.getByLabel('Votre demande', { exact: true })).toHaveValue('Comment ouvrir mon refrain ?');
+});
 
 test('project, draft, method and conversation survive reload and stay separate', async ({ page }) => {
   const { projects, sent } = await setup(page);

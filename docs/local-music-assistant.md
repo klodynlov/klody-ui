@@ -1,6 +1,8 @@
 # Atelier musique local — 22 septembre 2026
 
-L’atelier est accessible à `http://127.0.0.1:8018/#music`. Il ajoute un parcours de travail par morceau au Studio existant. Les liens Juridique et Médical ouvrent les lecteurs V3 et V8 existants ; leur pipeline n’a pas été remplacé.
+L’atelier est accessible depuis le lien « Atelier musique » de l’accueil de Klody UI, ou à `http://127.0.0.1:8018/#music`. Il ajoute un parcours de travail par morceau au Studio existant. Les liens Juridique et Médical ouvrent les lecteurs V3 et V8 existants ; leur pipeline n’a pas été remplacé.
+
+Pour commencer, saisissez directement une question et appuyez sur Entrée (Maj+Entrée ajoute une ligne). Le titre est facultatif pour ce premier envoi : la demande nomme le nouveau morceau, que vous pouvez ensuite renommer. La fiche enregistrée peut être complétée progressivement. Le bouton reste indisponible pendant une réponse ou un import ; une indisponibilité du moteur est expliquée près de la saisie.
 
 ## Fonctions livrées
 
@@ -35,7 +37,9 @@ Les tests du runtime médical V8, des réponses françaises et du serveur exista
 
 ## Installation et retour arrière
 
-Développement isolé dans `~/Projets/klody-ui-music-assistant`, branche `feat/local-music-assistant`, depuis un instantané du checkout local déjà modifié. Seuls les fichiers de cette fonctionnalité sont reportés dans `~/Projets/klody-ui` ; les modifications préexistantes restent intactes. Le bundle natif dans `/Applications` n’a pas été remplacé : cette livraison est accessible dans le navigateur local du Studio.
+Développement isolé dans `~/Projets/klody-ui-music-assistant`, branche `feat/local-music-assistant`, depuis un instantané du checkout local déjà modifié. Seuls les fichiers de cette fonctionnalité sont reportés dans `~/Projets/klody-ui` ; les modifications préexistantes restent intactes. La première livraison du 22 septembre ne remplaçait pas le bundle natif : elle était accessible uniquement dans le navigateur local du Studio. La correction du 23 septembre installe aussi le bundle dans `/Applications/klody-ui.app` et ajoute un accès direct depuis l’accueil.
+
+Une mise à jour du code ou de `dist` ne met pas à jour l’application installée : construire avec `npm run tauri build -- --bundles app`, vérifier la signature du bundle, quitter Klody UI, sauvegarder l’ancien bundle puis installer le nouveau. Sur ce poste, la signature ad hoc a dû être réappliquée avec `codesign --force --deep --sign -` avant `codesign --verify --deep --strict`. Le bundle installé est signé localement, sans nouvelle notarisation. Sauvegarde de l’application précédente et des fichiers corrigés : `~/Projets/KlodyModelStudio/backups/music-native-20260923/`. Restaurer l’ancien bundle après avoir quitté l’application permet de revenir en arrière sans effacer les projets.
 
 Sauvegarde des fichiers remplacés et du frontend initial : `~/Projets/KlodyModelStudio/backups/music-assistant-20260922/`. Le manifeste conserve les empreintes et les anciens jobs. Le retour arrière consiste à restaurer les anciens fichiers listés et `dist`, puis à relancer uniquement `com.klody.model-studio` après vérification qu’aucun job n’est actif. Conserver les fichiers de données musicaux et les résultats. Aucun résultat existant ne doit être supprimé pour revenir à l’ancienne interface.
 

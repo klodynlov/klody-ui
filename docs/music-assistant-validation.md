@@ -1,5 +1,11 @@
 # Vérification de l’atelier musique — 22 septembre 2026
 
+## Correction de l’application native — 23 septembre 2026
+
+Le bundle installé datait du 18 septembre et ne contenait pas l’atelier. Un deuxième défaut a été reproduit dans le navigateur : saisir une question sur un nouveau morceau laissait « Envoyer » grisé tant que le titre était vide, sans explication. Le titre est désormais créé depuis la première demande ; un titre explicite reste conservé. Entrée envoie, Maj+Entrée ajoute une ligne. L’accueil expose un accès direct à l’atelier et celui-ci permet de revenir à l’assistant.
+
+Validation de la correction : build TypeScript/Vite, 24 tests navigateur réussis sans nouvelle tentative, build Tauri depuis le checkout local préservé, signature ad hoc vérifiée puis installation dans `/Applications/klody-ui.app` avec sauvegarde. Depuis l’application installée, ouverture de l’atelier, saisie d’une demande sans titre, sélection du mode mixage puis envoi avec Entrée : réponse réelle terminée en 8,4 secondes, affichée avec deux références consultables. Les 90 jobs présents lors de la sauvegarde sont inchangés. Le service du Studio et le moteur n’ont pas été redémarrés. Les tests Python ci-dessous sont ceux de la livraison précédente ; le correctif ne modifie pas le backend.
+
 ## Résultats techniques
 
 - Build TypeScript/Vite réussi sur la branche de PR issue de `origin/main` (`9a31ce8`).
