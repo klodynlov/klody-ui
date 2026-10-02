@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { alpha, colors, radii, shadows } from "../theme";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { colors, radii, shadows } from "../theme";
 
-const API_BASE = "http://127.0.0.1:8000";
+import { apiError, requestApi } from "../api";
 
 type Cfg = Record<string, boolean | number>;
 
@@ -18,114 +18,124 @@ const NUMBERS: { key: string; label: string; min: number; max: number; help: str
   { key: "sandbox_timeout", label: "Timeout sandbox (s)", min: 1, max: 120, help: "Durée maximale d'une exécution sandbox." },
 ];
 
+function isConfig(value: unknown): value is Cfg {
+  if (!value || typeof value !== "object") return false;
+  const cfg = value as Cfg;
+  return TOGGLES.every(t => typeof cfg[t.key] === "boolean")
+    && NUMBERS.every(n => Number.isFinite(cfg[n.key]) && Number.isInteger(cfg[n.key]));
+}
+
 export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [cfg, setCfg] = useState<Cfg | null>(null);
-  const [err, setErr] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const epoch = useRef(0);
+  const busy = useRef(false);
 
   useEffect(() => {
     if (!open) return;
-    setErr(false);
+    const current = ++epoch.current;
+    const element = dialog.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    element?.showModal();
+    setErr(null);
     setCfg(null);
-    fetch(`${API_BASE}/api/config`)
-      .then((r) => r.json())
-      .then(setCfg)
-      .catch(() => setErr(true));
+    setSaving(false);
+    setSaved(false);
+    busy.current = false;
+    requestApi("/api/config")
+      .then(r => r.json())
+      .then(data => {
+        if (!isConfig(data)) throw new Error("Réglages reçus invalides.");
+        if (epoch.current === current) setCfg(data);
+      })
+      .catch(error => { if (epoch.current === current) setErr(apiError(error)); });
+    return () => {
+      epoch.current++;
+      element?.close();
+      previousFocus?.focus({ preventScroll: true });
+    };
   }, [open]);
 
-  if (!open) return null;
-
   const patch = async (key: string, value: boolean | number) => {
-    setCfg((prev) => (prev ? { ...prev, [key]: value } : prev)); // maj optimiste
+    if (busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    setSaved(false);
+    setErr(null);
+    const current = epoch.current;
     try {
-      const r = await fetch(`${API_BASE}/api/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const r = await requestApi("/api/config", {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [key]: value }),
       });
       const data = await r.json();
-      if (data?.config) setCfg(data.config); // réconciliation (clamp serveur)
-    } catch {
-      setErr(true);
+      if (!data.ok || !isConfig(data.config)) throw new Error("Le serveur n'a pas confirmé les réglages.");
+      if (current === epoch.current) { setCfg(data.config); setSaved(true); }
+    } catch (error) {
+      if (current === epoch.current) setErr(`Modification non confirmée : ${apiError(error)}`);
+    } finally {
+      if (current === epoch.current) { busy.current = false; setSaving(false); }
     }
   };
 
+  if (!open) return null;
   return (
-    <div
-      onClick={onClose}
-      style={{ position: "fixed", inset: 0, background: alpha(colors.text, 28), display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: "min(520px, 92vw)", maxHeight: "86vh", overflowY: "auto", background: colors.bgSurface, border: `1px solid ${colors.border}`, borderRadius: radii.xl, boxShadow: shadows.lg, padding: "22px 24px" }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-          <div style={{ fontSize: "16px", fontWeight: 700, color: colors.text }}>Paramètres</div>
-          <button onClick={onClose} title="Fermer" style={{ background: "transparent", border: "none", color: colors.textMuted, fontSize: "18px", cursor: "pointer", lineHeight: 1, fontFamily: "inherit" }}>
-            ✕
-          </button>
+    <dialog ref={dialog} aria-labelledby="settings-title" onCancel={onClose}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ width: "min(520px, 92vw)", maxHeight: "86dvh", margin: "auto", padding: 0, background: colors.bgSurface, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: radii.xl, boxShadow: shadows.lg }}>
+      <div style={{ padding: "22px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 id="settings-title" style={{ fontSize: 18, fontWeight: 700 }}>Paramètres</h2>
+          <button onClick={onClose} title="Fermer" aria-label="Fermer les paramètres" className="question-option">✕</button>
         </div>
-        <div style={{ color: colors.textMuted, fontSize: "11.5px", marginBottom: "18px", lineHeight: 1.5 }}>
-          Réglages du moteur appliqués à chaud (effet dès le prochain message). Réinitialisés au redémarrage de l'API.
-        </div>
-
-        {err && (
-          <div style={{ color: colors.dangerText, background: colors.dangerSoft, border: `1px solid ${colors.danger}`, borderRadius: radii.md, padding: "8px 12px", fontSize: "12px", marginBottom: "14px" }}>
-            Backend injoignable — réglages indisponibles.
-          </div>
-        )}
-        {!cfg && !err && <div style={{ color: colors.textSoft, fontSize: "12px" }}>Chargement…</div>}
-
-        {cfg && (
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {TOGGLES.map((t) => (
-              <Row key={t.key} label={t.label} help={t.help}>
-                <Switch on={!!cfg[t.key]} onChange={(v) => patch(t.key, v)} />
-              </Row>
-            ))}
-            <div style={{ height: "1px", background: colors.border, margin: "10px 0" }} />
-            {NUMBERS.map((n) => (
-              <Row key={n.key} label={n.label} help={n.help}>
-                <input
-                  type="number"
-                  min={n.min}
-                  max={n.max}
-                  value={Number(cfg[n.key] ?? 0)}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    if (!Number.isNaN(v)) patch(n.key, v);
-                  }}
-                  style={{ width: "64px", background: colors.bg, border: `1px solid ${colors.borderStrong}`, borderRadius: radii.sm, color: colors.text, fontSize: "12px", padding: "5px 8px", fontFamily: "inherit", textAlign: "right", outline: "none" }}
-                />
-              </Row>
-            ))}
-          </div>
-        )}
+        <p style={{ color: colors.textMuted, fontSize: 12, margin: "12px 0" }}>
+          Réglages appliqués dès le prochain message. Réinitialisés au redémarrage de l'API.
+        </p>
+        {err && <div role="alert" className="operation-error">{err}</div>}
+        <p role="status" style={{ fontSize: 12, color: colors.textMuted }}>
+          {saving ? "Enregistrement…" : saved ? "Réglages confirmés par le serveur." : !cfg && !err ? "Chargement…" : ""}
+        </p>
+        {cfg && <fieldset disabled={saving} style={{ border: 0, padding: 0, minWidth: 0 }}>
+          <legend className="sr-only">Moteur local</legend>
+          {TOGGLES.map(t => <Row key={t.key} label={t.label} help={t.help}>
+            <button role="switch" aria-label={t.label} aria-checked={!!cfg[t.key]}
+              onClick={() => patch(t.key, !cfg[t.key])} className="question-option">
+              {cfg[t.key] ? "Activé" : "Désactivé"}
+            </button>
+          </Row>)}
+          {NUMBERS.map(n => <Row key={n.key} label={n.label} help={n.help}>
+            <NumberSetting value={Number(cfg[n.key])} label={n.label} min={n.min} max={n.max} onApply={v => patch(n.key, v)} />
+          </Row>)}
+        </fieldset>}
       </div>
-    </div>
+    </dialog>
   );
+}
+
+function NumberSetting({ value, label, min, max, onApply }: {
+  value: number; label: string; min: number; max: number; onApply: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const number = Number(draft);
+  const valid = draft.trim() !== "" && Number.isInteger(number) && number >= min && number <= max;
+  return <form onSubmit={e => { e.preventDefault(); if (valid && number !== value) onApply(number); }} style={{ display: "flex", gap: 6 }}>
+    <input type="number" aria-label={label} min={min} max={max} step={1} value={draft}
+      onChange={e => setDraft(e.target.value)} aria-invalid={!valid}
+      style={{ width: 65, padding: 6, border: `1px solid ${colors.borderStrong}`, borderRadius: radii.sm }} />
+    <button className="question-option" disabled={!valid || number === value} aria-label={`Appliquer ${label}`}>OK</button>
+  </form>;
 }
 
 function Row({ label, help, children }: { label: string; help: string; children: ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "11px 0", borderBottom: `1px solid ${colors.borderSoft}` }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ color: colors.text, fontSize: "13px", fontWeight: 600 }}>{label}</div>
-        <div style={{ color: colors.textMuted, fontSize: "11px", lineHeight: 1.4, marginTop: "2px" }}>{help}</div>
-      </div>
-      <div style={{ flexShrink: 0 }}>{children}</div>
+  return <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${colors.borderSoft}` }}>
+    <div style={{ flex: "1 1 190px" }}>
+      <div style={{ fontSize: 13, fontWeight: 600 }}>{label}</div>
+      <p style={{ color: colors.textMuted, fontSize: 11, lineHeight: 1.5 }}>{help}</p>
     </div>
-  );
-}
-
-function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={on}
-      onClick={() => onChange(!on)}
-      style={{ width: "40px", height: "22px", borderRadius: radii.pill, border: "none", cursor: "pointer", background: on ? colors.primary : colors.borderStrong, position: "relative", transition: "background 0.15s", flexShrink: 0, padding: 0 }}
-    >
-      <span style={{ position: "absolute", top: "2px", left: on ? "20px" : "2px", width: "18px", height: "18px", borderRadius: radii.pill, background: colors.textInvert, transition: "left 0.15s", boxShadow: shadows.sm }} />
-    </button>
-  );
+    {children}
+  </div>;
 }

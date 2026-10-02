@@ -1,6 +1,8 @@
 import { Studio } from "./components/studio/Studio";
 import { MusicWorkspace } from "./components/music/MusicWorkspace";
 import "./index.css";
+import { Studio } from "./components/studio/Studio";
+import { MusicWorkspace } from "./components/music/MusicWorkspace";
 import { useCallback, useEffect, useState } from "react";
 import { useAgent } from "./hooks/useAgent";
 import { Header } from "./components/Header";
@@ -41,6 +43,9 @@ function AgentApp() {
     archiveSession,
     stopGeneration,
     respondApproval,
+    respondQuestion,
+    operationError,
+    dismissOperationError,
     forgetMemory,
     addMemory,
     fetchSkills,
@@ -49,6 +54,7 @@ function AgentApp() {
 
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("sessions");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Auto-remédiation supervisée : passé le palier d'escalade, le cockpit relance
   // lui-même l'API (action réversible) au lieu de demander la commande à l'humain.
@@ -82,8 +88,7 @@ function AgentApp() {
             notify("⚠ Usage : /forget <clé>");
             return;
           }
-          await forgetMemory(key);
-          notify(`✓ Oublié : ${key}`);
+          if (await forgetMemory(key)) notify(`✓ Oublié : ${key}`);
           setSidebarTab("memory");
           break;
         }
@@ -122,7 +127,7 @@ function AgentApp() {
   return (
     <div
       style={{
-        height: "100vh",
+        height: "100dvh",
         display: "flex",
         flexDirection: "column",
         background: colors.bg,
@@ -138,7 +143,11 @@ function AgentApp() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <button className="sidebar-toggle" aria-controls="app-sidebar" aria-expanded={sidebarOpen}
+        onClick={() => setSidebarOpen(value => !value)}>{sidebarOpen ? "Fermer la navigation" : "Sessions, mémoire et projet"}</button>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+        {sidebarOpen && <button className="sidebar-backdrop" aria-label="Fermer la navigation" onClick={() => setSidebarOpen(false)} />}
+        <div id="app-sidebar" className={`app-sidebar${sidebarOpen ? " is-open" : ""}`}>
         <Sidebar
           sessions={sessions}
           currentSessionId={status.sessionId}
@@ -151,15 +160,17 @@ function AgentApp() {
           }}
           tab={sidebarTab}
           onTabChange={setSidebarTab}
-          onLoad={loadSession}
+          onLoad={id => { loadSession(id); setSidebarOpen(false); }}
           onDelete={deleteSession}
           onRename={renameSession}
           onArchive={archiveSession}
           onForget={forgetMemory}
         />
+        </div>
 
         <main
           style={{
+            minWidth: 0,
             flex: 1,
             display: "flex",
             flexDirection: "column",
@@ -176,6 +187,11 @@ function AgentApp() {
 
           {status.connected && <ProposalCards onAccept={sendMessage} />}
 
+          {operationError && <div role="alert" className="operation-error">
+            <span>{operationError}</span>
+            <button onClick={dismissOperationError} aria-label="Masquer l'erreur">✕</button>
+          </div>}
+
           <ChatPanel
             messages={messages}
             status={status}
@@ -183,10 +199,12 @@ function AgentApp() {
             onSend={sendMessage}
             onLoad={loadSession}
             onApproval={respondApproval}
+            onQuestion={respondQuestion}
           />
           <InputBar
+            sessionId={status.sessionId}
             disabled={!status.connected}
-            thinking={status.thinking}
+            thinking={status.thinking || messages.some(m => m.questionState === "pending" || m.approvalState === "pending")}
             onSend={sendMessage}
             onUploadImage={uploadImage}
             onStop={stopGeneration}

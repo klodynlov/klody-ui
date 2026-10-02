@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { QuestionCard } from "./QuestionCard";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import type { ChatMessage, AgentStatus, SessionSummary } from "../hooks/useAgent";
@@ -927,9 +928,10 @@ interface Props {
   onSend: (text: string) => void;
   onLoad: (id: string) => void;
   onApproval: (id: string, approved: boolean) => void;
+  onQuestion: (id: string, answer: string) => boolean;
 }
 
-export function ChatPanel({ messages, status, sessions, onSend, onLoad, onApproval }: Props) {
+export function ChatPanel({ messages, status, sessions, onSend, onLoad, onApproval, onQuestion }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef(false);
@@ -981,7 +983,9 @@ export function ChatPanel({ messages, status, sessions, onSend, onLoad, onApprov
           <WelcomeScreen sessions={sessions} onSend={onSend} onLoad={onLoad} />
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} onApproval={onApproval} />
+          msg.role === "question"
+            ? <QuestionCard key={msg.id} message={msg} onAnswer={onQuestion} />
+            : <MessageBubble key={msg.id} msg={msg} onApproval={onApproval} />
         ))}
         {status.thinking && <ThinkingIndicator />}
         <div ref={bottomRef} />
