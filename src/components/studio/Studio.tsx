@@ -135,10 +135,11 @@ function preparationText(model: Model) {
 }
 const pct = (value?: number) => value === undefined ? '—' : `${(value * 100).toFixed(1).replace('.', ',')} %`;
 export function Studio() {
-  const [view, setView] = useState<View>('home');
+  const initialSpecialist = window.location.hash.split('/')[1];
+  const [view, setView] = useState<View>(['music', 'legal', 'medical'].includes(initialSpecialist) ? 'chat' : 'home');
   const [catalog, setCatalog] = useState<Catalog>({ models: [], versions: [], feedback_count: 0 });
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [modelId, setModelId] = useState('research');
+  const [modelId, setModelId] = useState(['music', 'legal', 'medical'].includes(initialSpecialist) ? initialSpecialist : 'research');
   const [version, setVersion] = useState('');
   const [question, setQuestion] = useState('');
   const [conversation, setConversation] = useState<Job[]>([]);
@@ -227,6 +228,7 @@ export function Studio() {
       <a className="st-brand" href="#" title="Retour à Klody‑AI"><span className="st-brand-symbol">k<span>✳</span></span><span>klody<span className="st-brand-ai">AI</span></span></a>
       <div className="st-workspace"><span className="st-avatar">K</span><div>Espace personnel<small>Votre intelligence, en local</small></div><span className="st-tiny-dot"/></div>
       <div className="st-nav-label">STUDIO DES MODÈLES</div>
+      <a href="#music" style={{ display: 'block', margin: '8px 0 18px', color: '#efba7b', fontSize: 13 }}>♫ Atelier musique · projets et méthodes</a>
       <nav aria-label="Studio">{([['home', 'grid', 'Vue d’ensemble'], ['chat', 'chat', 'Discuter'], ['train', 'train', 'Entraîner'], ['evaluate', 'chart', 'Évaluer']] as const).map(([v, icon, label]) => <button key={v} className={view === v ? 'selected' : ''} onClick={() => navigate(v)} aria-current={view === v ? 'page' : undefined}><Icon name={icon}/>{label}{v === 'train' && jobs.some(j => j.kind === 'train' && active(j)) && <span className="st-live-dot"/>}</button>)}</nav>
       <div className="st-nav-label st-space">VOS MODÈLES <span>{catalog.models.length.toString().padStart(2, '0')}</span></div>
       {catalog.models.map(m => <button key={m.id} className="st-sidebar-model" onClick={() => choose(m.id)}><span className={`st-mini-icon ${m.id}`}><Icon name={presentation(m.id, m.version).icon} size={16}/></span><span>{m.name}<small>{m.parameters} · {m.version}</small></span><span className={`st-tiny-dot ${m.available ? '' : 'offline'}`}/></button>)}

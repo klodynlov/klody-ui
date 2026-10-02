@@ -1,4 +1,5 @@
 import { Studio } from "./components/studio/Studio";
+import { MusicWorkspace } from "./components/music/MusicWorkspace";
 import "./index.css";
 import { useCallback, useEffect, useState } from "react";
 import { useAgent } from "./hooks/useAgent";
@@ -201,11 +202,11 @@ function AgentApp() {
 
 // The Studio owns its local engine; mounting it does not start agent reconnects.
 export default function App() {
-  const [studio, setStudio] = useState(() => window.location.hash.startsWith("#studio"));
+  const [route, setRoute] = useState(() => window.location.hash);
   useEffect(() => {
-    const update = () => setStudio(window.location.hash.startsWith("#studio"));
+    const update = () => setRoute(window.location.hash);
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
-  return studio ? <Studio /> : <AgentApp />;
+  return route.startsWith("#music") ? <MusicWorkspace /> : route.startsWith("#studio") ? <Studio key={route} /> : <AgentApp />;
 }
