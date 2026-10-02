@@ -64,6 +64,7 @@ function ContextGauge({ used, window: win }: { used: number; window: number }) {
 export function Header({ status, availableModels, onModelChange, onNewSession, onOpenSettings }: Props) {
   return (
     <header
+      className="app-header"
       style={{
         background: colors.bg,
         borderBottom: `1px solid ${colors.border}`,
@@ -105,7 +106,7 @@ export function Header({ status, availableModels, onModelChange, onNewSession, o
       <a href="#music" style={{ color: colors.primary, fontSize: "12px", textDecoration: "none", padding: "6px 10px", border: `1px solid ${colors.border}`, borderRadius: radii.md, flexShrink: 0 }}>♫ Atelier musique</a>
       <a href="#studio" style={{ color: colors.primary, fontSize: "12px", textDecoration: "none", padding: "6px 10px", border: `1px solid ${colors.border}`, borderRadius: radii.md }}>✳ Studio des modèles</a>
 
-      <div style={{ flex: 1 }} />
+      <div className="header-spacer" style={{ flex: 1 }} />
 
       <StatusDot active={status.ollama || (status.backend === "mlx")}
                  label={status.backend === "mlx" ? "MLX" : "Ollama"}
@@ -129,6 +130,7 @@ export function Header({ status, availableModels, onModelChange, onNewSession, o
       {/* Model selector — Bootstrap-like select compact */}
       {availableModels.length >= 1 ? (
         <select
+          aria-label="Modèle d'IA"
           value={status.model || "auto"}
           onChange={(e) => onModelChange(e.target.value)}
           title={

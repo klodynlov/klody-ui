@@ -4,9 +4,13 @@ Application native macOS + web pour [Klody Code AI](https://github.com/klodynlov
 chat avec un agent de coding local, visualisation des décisions du router et
 des actions exécutées en temps réel.
 
-> **Status** : v2.2 — light theme warm, composants v2 (router/sandbox/best-of-N/conventions),
+> **Status** : v2.3 — light theme warm, composants v2 (router/sandbox/best-of-N/conventions),
 > **auto-remédiation supervisée du backend** (le cockpit relance l'API lui-même
 > en cas de coupure prolongée — cf. « Autonomie »).
+
+La version 2.3 ajoute les questions interactives, les brouillons par session,
+les confirmations serveur et une interface accessible au clavier.
+Voir [les changements, tests et limites](docs/PRODUIT-2.3.md).
 
 ---
 
@@ -108,7 +112,7 @@ Affichent les 4 events nouveaux émis par l'orchestrator :
 - **Header** — wordmark serif "Klody AI", status dot dynamique (MLX/Ollama), modèle tronqué, "X messages"
 - **Sidebar** — 3 onglets (Sessions / Mémoire / Projet) + recherche + export Markdown par session
 - **ChatPanel** — avatars circulaires `K` / `U`, bulles user à droite, Klody en flow pleine largeur (style Claude/ChatGPT), stats `⏱ Xs · ~Y tok` inline header, bouton "↑ Haut" flottant
-- **InputBar** — textarea auto-resize, attachement fichier 50 Ko max, bouton primary envoyer / danger stop
+- **InputBar** — textarea auto-resize, attachement fichier 250 Ko max, bouton primary envoyer / danger stop
 
 ---
 
@@ -196,3 +200,10 @@ L'app finale embarque le binaire Rust + le bundle Vite. Le backend Python doit
 ## Licence
 
 Usage personnel, non commercial.
+
+
+## Studio des modèles locaux
+
+L’entrée **✳ Studio des modèles** donne accès à LibraryBrain Research 4B et
+KlodyMusic 4B : conversation avec sources, entraînement isolé, comparaison et
+versions candidates. [Guide du Studio](docs/studio/README.md).
