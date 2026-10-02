@@ -1,8 +1,6 @@
 import { Studio } from "./components/studio/Studio";
 import { MusicWorkspace } from "./components/music/MusicWorkspace";
 import "./index.css";
-import { Studio } from "./components/studio/Studio";
-import { MusicWorkspace } from "./components/music/MusicWorkspace";
 import { useCallback, useEffect, useState } from "react";
 import { useAgent } from "./hooks/useAgent";
 import { Header } from "./components/Header";
