@@ -1,0 +1,29 @@
+{
+  "date": "2026-09-18",
+  "python_tests_passed": 43,
+  "browser_tests_passed": 4,
+  "typescript_vite_build": "passed",
+  "tauri_build": "passed",
+  "installed_signature": "verified",
+  "installed_binary_sha256": "0737dd22392b8cbfa264fb2db8172c5924cf26ae34f3592cd39b760437a683c3",
+  "live_job_id": "512b4da52dd8466c955d162769e8d7d7",
+  "question": "douleur aux oreilles",
+  "source_ids": [
+    "LB:19091:1758239:paragraph1"
+  ],
+  "target_language": "fr",
+  "total_seconds": 31.104,
+  "prior_results_unchanged": 60,
+  "profile_and_evaluated_worker_unchanged": true,
+  "changed_preexisting_files": [
+    "src/components/studio/Studio.tsx",
+    "studio/medical_translation.py",
+    "studio/models.py",
+    "studio/test_medical_v8.py"
+  ],
+  "added_source_files": [
+    "studio/medical_french_worker.py",
+    "studio/test_medical_french_default.py",
+    "tests/e2e/studio-french.spec.ts"
+  ]
+}

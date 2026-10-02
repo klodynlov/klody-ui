@@ -1,0 +1,59 @@
+{
+  "created_at": 1788702518.475013,
+  "unit_tests_passed": 11,
+  "typescript_vite_build": "passed",
+  "tauri_build": "passed",
+  "native_studio_connected": "observed",
+  "responsive_viewports": [
+    [
+      1280,
+      720
+    ],
+    [
+      390,
+      844
+    ]
+  ],
+  "mobile_sources_dialog": "observed",
+  "original_release_weights_unchanged": {
+    "research": true,
+    "music": true
+  },
+  "jobs": [
+    {
+      "id": "8ea5f756154647ba9a6281b137f1f307",
+      "kind": "chat",
+      "model": "music",
+      "status": "completed",
+      "version": null,
+      "finished": 1788701856.100631
+    },
+    {
+      "id": "ea2b541ef49644e69f4239b5fd0ee08e",
+      "kind": "train",
+      "model": "music",
+      "status": "completed",
+      "iterations": 5,
+      "version": "ea2b541ef49644e69f4239b5fd0ee08e",
+      "finished": 1788702163.5739589
+    },
+    {
+      "id": "685effd612cb47d78418c0ed3a83c45b",
+      "kind": "evaluate",
+      "model": "music",
+      "status": "cancelled",
+      "version": "ea2b541ef49644e69f4239b5fd0ee08e",
+      "finished": 1788702392.840024
+    },
+    {
+      "id": "42df097454644972a5ca9fb977417589",
+      "kind": "chat",
+      "model": "research",
+      "status": "completed",
+      "version": null,
+      "finished": 1788702454.515288
+    }
+  ],
+  "evaluation_smoke": "Started via UI, cancelled after 20 base responses to verify cancellation; candidate not fully evaluated",
+  "automatic_agent_routing": false
+}

@@ -1,0 +1,32 @@
+{
+  "timestamp": 1788721073.267481,
+  "installed_binary_matches_build": true,
+  "binary_sha256": "3abf80f8bd191d8be717ecf0fcf15020182cc0bfe1e14ad257b32654c0e79870",
+  "studio_tests_passed": 21,
+  "business_contract_tests_passed": 15,
+  "typescript_vite_build": "passed",
+  "tauri_build": "passed",
+  "native_ui": "Business Pratique visible with real preparation progress; entry from Klody-AI verified",
+  "desktop_layout": {
+    "width": 1280,
+    "height": 720,
+    "main_overflow": false,
+    "sidebar_scroll_top": 0
+  },
+  "mobile_dom_dimensions": {
+    "width": 390,
+    "height": 844,
+    "root_width": 390
+  },
+  "e2e_model_status": "completed, three cases plus pricing retest",
+  "e2e_report": "/Users/klodynlov/Projets/BusinessPratique/reports/integration_review.json",
+  "final_test_cases": 207,
+  "contract_pass_rate": 0.6618357487922706,
+  "base_contract_pass_rate": 0.4396135265700483,
+  "source_fidelity": {
+    "business": 31,
+    "base": 32,
+    "n": 36
+  },
+  "release": "BusinessPratique-4B-v0.1"
+}

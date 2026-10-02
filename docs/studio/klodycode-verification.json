@@ -1,0 +1,47 @@
+{
+  "status": "complete_experimental_needs_improvement",
+  "verified_at": 1788732897.760881,
+  "studio_tests_passed": 34,
+  "model_tests_passed": 26,
+  "vite_build": "passed",
+  "native_build": "passed",
+  "native_visual_checks": [
+    "Fourth specialist is available and marked À améliorer",
+    "Python response retains indentation and uses the Votre code et consignes context panel",
+    "Training view displays 695/80/98 frozen examples",
+    "Evaluation displays 44.9 vs 38.8 contract, 29/33 vs 27/33 source fidelity, 6/12 Python for both models",
+    "Corrected function conversation left open in native application"
+  ],
+  "integration_report": "/Users/klodynlov/Projets/KlodyCode/reports/integration_review.json",
+  "validation_gate_passed": false,
+  "model_weight_manifest": {
+    "name": "KlodyCode 4B v0.1",
+    "base": "mlx-community/Qwen3-4B-Instruct-2507-8bit",
+    "base_revision": "0e42af58449718de7931ee04f28191fbe6c43a56",
+    "quantization_bits": 8,
+    "chat_template_sha256": "30a75d10e60b57e2f260420163dd59720dacf9f63b9a8de070d65dd80a7b30f7",
+    "generation_format": "empty reasoning scaffold aligned with training answers",
+    "adapter_selection": {
+      "criterion": "validation_source_fidelity_coding_and_contract",
+      "loss": 0.5883501768112183,
+      "iteration": 86,
+      "warning": "Iteration 0 validation is the untrained baseline; no improvement if selected.",
+      "lora_update_multiplier": 0.5,
+      "validation_gate_passed": false
+    },
+    "weights_sha256": {
+      "model.safetensors": "89db8109605e04e65617fed51188ea28f0ed23df75095e5eefc4b403ee04fd61"
+    },
+    "weights_bytes": 4274158989,
+    "evaluation_contract": "Evaluate these fused weights; results saved separately in evaluation.json after completion",
+    "publication": "private local pilot; source rights unverified"
+  },
+  "files": {
+    "studio/models.py": "d1e39006f0ea5a409d82f2efe2b004091d8f56f4a44f5b9c583c90d134d51c9b",
+    "studio/server.py": "aabe576844471d68b619442009b3f26dc30c303a13ee5375442799f57848bfee",
+    "studio/worker.py": "6738c1e0448d9f4e3b2a39c34fbf26ea4dd7d69106de7e89e750e58a1c5c3085",
+    "studio/code_context.py": "6114476afa519aeb313b0c9d01bcd9b26f2bbaa53f294246da6eb9ea79d2da3c",
+    "src/components/studio/Studio.tsx": "dd4673526315f24db2d4ccbd5a8f057b85ba5815642fe235bc020ba479e05640",
+    "src/components/studio/studio.css": "206edbb61eb2000dac8be2f0fcbac232853234120c95d11b9acf061eff18ff58"
+  }
+}

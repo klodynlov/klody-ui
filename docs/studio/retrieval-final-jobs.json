@@ -1,0 +1,14 @@
+[
+  {
+    "case": "kick",
+    "job_id": "19e7233a742a42d8a964d8a7a92f39d5"
+  },
+  {
+    "case": "followup",
+    "job_id": "6d902fbb248a49b1aaf4d559bef60857"
+  },
+  {
+    "case": "absent",
+    "job_id": "8ebcb66f999646769f080bc9b6fa4145"
+  }
+]
