@@ -59,6 +59,7 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab
 
   return (
     <aside
+      aria-label="Navigation des sessions"
       style={{
         width: "240px",
         flexShrink: 0,
@@ -118,6 +119,7 @@ export function Sidebar({ sessions, currentSessionId, memories, projectInfo, tab
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher…"
+            aria-label="Rechercher une session"
             style={{
               width: "100%",
               background: colors.bg,

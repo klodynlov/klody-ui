@@ -25,6 +25,10 @@ export async function stubRest(page: Page, opts: {
   sessions?: Array<{ id: string; title: string; messages: number; modified: number; preview: string }>;
   memories?: Array<{ key: string; content: string; category: string; updated_at: string }>;
 } = {}) {
+  // Toute route non simulée reste hors de la vraie API de l'utilisateur.
+  await page.route(`${API_BASE}/**`, route => route.fulfill({
+    status: 404, contentType: "application/json", body: '{"detail":"Route non simulée"}',
+  }));
   const status = {
     ollama: opts.ollama ?? true,
     librarybrain: { up: opts.libraryBrainUp ?? false },
@@ -41,7 +45,7 @@ export async function stubRest(page: Page, opts: {
   await page.route(`${API_BASE}/api/status`, (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(status) })
   );
-  await page.route(`${API_BASE}/api/sessions`, (route) =>
+  await page.route(`${API_BASE}/api/sessions?*`, (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(opts.sessions ?? []) })
   );
   await page.route(`${API_BASE}/api/memories`, (route) =>

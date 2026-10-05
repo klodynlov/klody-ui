@@ -1,12 +1,14 @@
 import { useCallback, useRef, useState } from "react";
+import { useDraft } from "../hooks/useDraft";
 import { alpha, colors, radii, shadows } from "../theme";
 import { SlashMenu } from "./SlashMenu";
 import { slashQuery, filterCommands, parseCommand, type SlashCommand } from "../slashCommands";
 
 interface Props {
+  sessionId: string;
   disabled: boolean;
   thinking: boolean;
-  onSend: (text: string, imagePaths?: string[]) => void;
+  onSend: (text: string, imagePaths?: string[]) => boolean;
   onUploadImage: (file: File) => Promise<{ name: string; path: string }>;
   onStop: () => void;
   onCommand: (name: string, args: string) => void;
@@ -18,8 +20,8 @@ const MAX_IMAGE_SIZE = 60 * 1024 * 1024; // 60 Mo — doit rester ≤ VL_MAX_IMA
 const ACCEPTED_EXTENSIONS = ".py,.js,.ts,.tsx,.jsx,.md,.txt,.json,.yaml,.yml,.toml,.rs,.go,.sh,.bash,.zsh,.css,.html,.xml,.sql,.env,.cfg,.ini,.log";
 const ACCEPTED_IMAGE_TYPES = "image/png,image/jpeg,image/webp,image/gif,image/bmp";
 
-export function InputBar({ disabled, thinking, onSend, onUploadImage, onStop, onCommand }: Props) {
-  const [text, setText] = useState("");
+export function InputBar({ sessionId, disabled, thinking, onSend, onUploadImage, onStop, onCommand }: Props) {
+  const [text, setText] = useDraft(sessionId);
   const [attachment, setAttachment] = useState<{ name: string; content: string } | null>(null);
   const [images, setImages] = useState<{ name: string; path: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -85,7 +87,7 @@ export function InputBar({ disabled, thinking, onSend, onUploadImage, onStop, on
       finalMessage = trimmed ? `${codeBlock}\n\n${trimmed}` : codeBlock;
     }
 
-    onSend(finalMessage, images.map(i => i.path));
+    if (!onSend(finalMessage, images.map(i => i.path))) return;
     setText("");
     setAttachment(null);
     clearImages();
@@ -96,6 +98,7 @@ export function InputBar({ disabled, thinking, onSend, onUploadImage, onStop, on
   }, [text, attachment, images, uploading, disabled, onSend, onCommand, resetInput, clearImages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing) return;
     if (menuVisible) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -410,7 +413,8 @@ export function InputBar({ disabled, thinking, onSend, onUploadImage, onStop, on
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder={disabled ? "Klody réfléchit…" : "Message…  (Entrée pour envoyer, Shift+Entrée pour saut de ligne)"}
+          aria-label="Message à Klody"
+          placeholder={disabled ? "Connexion au moteur en cours…" : "Message…  (Entrée pour envoyer, Shift+Entrée pour saut de ligne)"}
           rows={1}
           style={{
             flex: 1,

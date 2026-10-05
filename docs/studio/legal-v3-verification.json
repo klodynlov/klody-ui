@@ -1,0 +1,365 @@
+{
+  "date": "2026-09-10",
+  "status": "integrated_for_experimental_testing",
+  "model": "legal",
+  "profile": "/Users/klodynlov/Projets/LibraryBrainLegal/profiles/lora-v3-experimental.json",
+  "tests_passed": 42,
+  "build": [
+    "TypeScript",
+    "Vite",
+    "Tauri release app"
+  ],
+  "installed_app": "/Applications/klody-ui.app",
+  "native_observations": [
+    "Juridique V3 in Studio catalog and model selection",
+    "R415-5 question submitted via installed native UI",
+    "Answer and five dated sources visible, source R415-5 page 460",
+    "Experimental notice and literal excerpt audit visible",
+    "Evaluation page displays V3/base/V2 reviews distinctly",
+    "Signed installed app relaunched; persisted R415-5 conversation and dated sources reopened successfully"
+  ],
+  "existing_jobs_preserved": 37,
+  "source_hashes": {
+    "studio/models.py": "be0571d8ec157019a797293a1ab712cc5bb4e217a1f2235bd67e71615041a602",
+    "studio/server.py": "298648aac20909e48af1cd92c5583ce01164469923672d20098d89bab18ee235",
+    "studio/legal_model.py": "dcc2cc5e07aff82659a73dd9e811618e7544e297f73589d890fb6d3635c5fdca",
+    "studio/legal_worker.py": "c1ce0d111da0e83db8d6f8cf64318ad5631863800905e398f6e8bb91d28e95d9",
+    "studio/test_legal.py": "272e1237c68e2392da6cdf76fdade47542ab83e11199c8260f3f61cc72307548",
+    "src/components/studio/Studio.tsx": "bc97b0e9ab0eab70541ca2d406621953e67f79618fbd366458c55cf3f6a1a0b5",
+    "src/components/studio/studio.css": "4a728212a2f15a7a8681aae78281651a84eeae01640082317fc6e1e78353e90d"
+  },
+  "installed_binary_sha256": "7d7e41c199c2e258258b0665a05fdc10e08fbef7c72c852b9266424da42b7c55",
+  "build_binary_sha256": "7d7e41c199c2e258258b0665a05fdc10e08fbef7c72c852b9266424da42b7c55",
+  "test_jobs": [
+    {
+      "id": "7d9f6eed858142f3aa42a694cef4bece",
+      "status": "completed",
+      "question": "Puis-je trouver ici les règles du divorce dans le Code civil ?",
+      "seconds": 3.67,
+      "result": {
+        "answer": "SOURCES_INSUFFISANTES.",
+        "sources": [
+          {
+            "id": "route:R325-5",
+            "source_id": "route",
+            "number": "R325-5",
+            "title": "Code de la route · article R325-5 [route:R325-5]",
+            "outline": "Partie réglementaire / Livre III : Le véhicule. / Titre II : Dispositions administratives. / Chapitre V : Immobilisation et mise en fourrière / Section 2 : Immobilisation.",
+            "pages": [
+              339
+            ],
+            "text": "Lorsque la décision d'immobilisation résulte d'une infraction aux règles concernant l'état ou l'équipement du véhicule, elle peut n'être rendue effective que dans un lieu où le conducteur du véhicule sera susceptible de trouver les moyens de faire cesser l'infraction.\n\nIl ne peut être fait usage de cette faculté que dans la mesure où l'accompagnement du véhicule jusqu'à ce lieu peut être assuré dans des conditions de sécurité satisfaisantes.\n\nLe conducteur peut également être autorisé à faire appel à un professionnel qualifié pour la prise en remorque de son véhicule en vue de sa réparation. L'immobilisation devient alors effective au lieu de réparation.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "ae2e984de7ff6039ccce5fa7f3d4b9f364d5141fed1552dc29313c255c8489a3",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/route.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006074228.pdf/LEGI",
+            "text_sha256": "a78f4edbe6a2aedc022753a9670b7e240cb1cd47402c32d8da797d39ab83fccb",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -10.030923453024227,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 339
+          },
+          {
+            "id": "procedure-penale:335",
+            "source_id": "procedure-penale",
+            "number": "335",
+            "title": "Code de procédure pénale · article 335 [procedure-penale:335]",
+            "outline": "Partie législative / Livre II : Des juridictions de jugement / Titre Ier : De la cour d'assises et de la cour criminelle départementale / Chapitre VI : Des débats / Section 3 : De la production et de la discussion des preuves",
+            "pages": [
+              260,
+              261
+            ],
+            "text": "Ne peuvent être reçues sous la foi du serment les dépositions :\n\n1° Du père, de la mère ou de tout autre ascendant de l'accusé, ou de l'un des accusés présents et soumis au même débat ;\n\n2° Du fils, de la fille, ou de tout autre descendant ;\n\n3° Des frères et soeurs ;\n\n4° Des alliés aux mêmes degrés ;\n\n5° Du mari ou de la femme, du partenaire lié à l'accusé par un pacte civil de solidarité ou de son concubin, au sens de l'article 515-8 du code civil, lorsque cet état a été allégué par le témoin, l'accusé ou une partie et qu'il n'est pas contesté ou qu'il est établi par les éléments de la procédure ; cette prohibition subsiste même après le divorce, la dissolution du pacte civil de solidarité ou la cessation du concubinage ;\n\n6° De la partie civile ;\n\n7° Des enfants au-dessous de l'âge de seize ans ;\n\n8° De toute personne qui a été accusée, prévenue ou condamnée soit pour le crime dont est saisie la cour d'assises en qualité de coauteur ou de complice, soit pour un crime ou un délit connexe ou formant un ensemble indivisible avec le crime dont est saisie la cour d'assises.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "1f786a23cd20da676e8b7a8d034ad66cbaa4f4b1c04b438f255761a65e2626f5",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/procedure-penale.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006071154.pdf/LEGI",
+            "text_sha256": "e3a9489b948b7956914d1f66f57254751692eeaf76d1f629e489a097dfa98d93",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -9.785744201255989,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 260
+          },
+          {
+            "id": "procedure-penale:712-16-1",
+            "source_id": "procedure-penale",
+            "number": "712-16-1",
+            "title": "Code de procédure pénale · article 712-16-1 [procedure-penale:712-16-1]",
+            "outline": "Partie législative / Livre V : Des procédures d'exécution / Titre Ier : De l'exécution des sentences pénales / Chapitre II : Des juridictions de l'application des peines / Section 4 : Dispositions communes",
+            "pages": [
+              697,
+              698
+            ],
+            "text": "Préalablement à toute décision entraînant la cessation temporaire ou définitive de l'incarcération d'une personne condamnée à une peine privative de liberté avant la date d'échéance de cette peine, les juridictions de l'application des peines prennent en considération les intérêts de la victime ou de la partie civile au regard des conséquences pour celle-ci de cette décision.\n\nLes mesures prévues à l'article 712-16 peuvent porter sur les conséquences des décisions d'individualisation de la peine au regard de la situation de la victime ou de la partie civile, et notamment le risque que le condamné puisse se trouver en présence de celle-ci.\n\nSi elles l'estiment opportun, les juridictions de l'application des peines peuvent, avant toute décision, informer la victime ou la partie civile, directement ou par l'intermédiaire de son avocat, qu'elle peut présenter ses observations par écrit dans un délai de quinze jours à compter de la notification de cette information.\n\nCes observations peuvent être adressées à la juridiction par la victime ou la partie civile par tout moyen à leur convenance.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "1f786a23cd20da676e8b7a8d034ad66cbaa4f4b1c04b438f255761a65e2626f5",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/procedure-penale.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006071154.pdf/LEGI",
+            "text_sha256": "0379d1d0a63e2304718611b7b2732d920aeb2e3c65b42ac2791d27576407ff74",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -9.386580129591929,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 697
+          },
+          {
+            "id": "procedure-penale:10",
+            "source_id": "procedure-penale",
+            "number": "10",
+            "title": "Code de procédure pénale · article 10 [procedure-penale:10]",
+            "outline": "Partie législative / Titre préliminaire : Dispositions générales",
+            "pages": [
+              16
+            ],
+            "text": "Lorsque l'action civile est exercée devant une juridiction répressive, elle se prescrit selon les règles de l'action publique. Lorsqu'elle est exercée devant une juridiction civile, elle se prescrit selon les règles du code civil.\n\nLorsqu'il a été statué sur l'action publique, les mesures d'instruction ordonnées par le juge pénal sur les seuls intérêts civils obéissent aux règles de la procédure civile.\n\nLorsque la juridiction répressive a omis de se prononcer sur une ou plusieurs demandes de la partie civile régulièrement constituée, celle-ci peut ressaisir la juridiction afin qu'il soit statué sur sa demande conformément aux articles 710 et 711. La présence du ministère public à cette audience est facultative. Lorsque l'état mental ou physique d'une personne citée ou renvoyée devant une juridiction de jugement rend durablement impossible sa comparution personnelle dans des conditions lui permettant d'exercer sa défense et que la prescription de l'action publique se trouve ainsi suspendue, le président de cette juridiction peut, d'office, ou à la demande du ministère public ou des parties, décider, après avoir ordonné une expertise permettant de constater cette impossibilité, qu'il sera tenu une audience publique pour statuer uniquement sur l'action civile. La personne doit alors être représentée à cette audience par un avocat.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "1f786a23cd20da676e8b7a8d034ad66cbaa4f4b1c04b438f255761a65e2626f5",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/procedure-penale.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006071154.pdf/LEGI",
+            "text_sha256": "008cad9ae64451be042ee344bcb4ba2cd887ec769b1f2d02ba5088c7bb3e44da",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -8.681653124660372,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 16
+          },
+          {
+            "id": "procedure-penale:R215",
+            "source_id": "procedure-penale",
+            "number": "R215",
+            "title": "Code de procédure pénale · article R215 [procedure-penale:R215]",
+            "outline": "Partie réglementaire - Décrets en Conseil d'Etat / Livre V : Des procédures d'exécution. / Titre X : Des frais de justice / Chapitre III : Des dépenses assimilées à celles de l'instruction des / Section 1 : Règles générales",
+            "pages": [
+              1215
+            ],
+            "text": "Par dérogation à la règle établie à l'article précédent, sont payés conformément au tarif fixé par le présent titre, les frais des poursuites exercées devant le tribunal civil ou devant la cour d'appel :\n\n1° Pour contravention aux lois sur la tenue des registres de l'état civil, dans les cas prévus aux articles 50 et 53 du code civil, et sur la célébration des mariages, dans le cas prévu à l'article 192 du code civil ;\n\n2° Pour infractions disciplinaires commises par des officiers publics ou ministériels.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "1f786a23cd20da676e8b7a8d034ad66cbaa4f4b1c04b438f255761a65e2626f5",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/procedure-penale.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006071154.pdf/LEGI",
+            "text_sha256": "7f4a397a9aa5b4fce72a4178825f2a24e4f9b019ef10cd2cb9ba92f91ffd44b8",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -8.626788482501107,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 1215
+          }
+        ],
+        "confidence": {
+          "level": "unverified"
+        },
+        "phase": "done",
+        "source_status": "retrieved",
+        "history_policy": "independent_questions",
+        "profile": "LoRA juridique V3 — extraits contrôlables, expérimental",
+        "adapter": "/Users/klodynlov/Projets/LibraryBrainLegal/experiments/20260910-lora-v3/adapters/best",
+        "adapter_sha256": "7714f6005da80d9eeccfda8ba3e87bac97f2dde80eba8f955547250ce27dc556",
+        "system_prompt_sha256": "980f0c957ac9c2c5de49e7c7c94c153c99fa2bda09d6f526e93c12457ea02f1e",
+        "base_model": "/Users/klodynlov/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-8bit/snapshots/0e42af58449718de7931ee04f28191fbe6c43a56",
+        "experimental": true,
+        "prompt_tokens": 1973,
+        "finish_reason": "stop",
+        "citation_audit": {
+          "cited_ids": [],
+          "unexpected_ids": [],
+          "unsupported_article_mentions": [],
+          "has_allowed_citation": false,
+          "factual_correctness": "requires_legal_review"
+        },
+        "excerpt_audit": {
+          "excerpts": [],
+          "unmatched_excerpts": 0,
+          "uncited_or_misattributed_excerpts": 0,
+          "legal_correctness": "not_established_by_a_literal_quote_match"
+        },
+        "audit_notice": "Aucun extrait littéral contrôlable dans cette réponse. Vérifiez les sources."
+      }
+    },
+    {
+      "id": "281d692fdf1f4a2aa984167885a6ea56",
+      "status": "completed",
+      "question": "Quel retrait de points le R415-5 prévoit-il pour le non-respect de la priorité ?",
+      "seconds": 5.71,
+      "result": {
+        "answer": "Extrait : \"Cette contravention donne lieu de plein droit à la réduction de quatre points du permis de conduire.\" [route:R415-5]  \nRéponse : Le R415-5 prévoit une réduction de quatre points du permis de conduire pour le non-respect de la priorité.",
+        "sources": [
+          {
+            "id": "route:R415-5",
+            "source_id": "route",
+            "number": "R415-5",
+            "title": "Code de la route · article R415-5 [route:R415-5]",
+            "outline": "Partie réglementaire / Livre IV : L'usage des voies. / Titre Ier : Dispositions générales. / Chapitre V : Intersections et priorité de passage.",
+            "pages": [
+              460
+            ],
+            "text": "Lorsque deux conducteurs abordent une intersection par des routes différentes, le conducteur venant par la gauche est tenu de céder le passage à l'autre conducteur, sauf dispositions différentes prévues au présent livre.\n\nLe fait, pour tout conducteur, de ne pas respecter les règles de priorité fixées au présent article est puni de l'amende prévue pour les contraventions de la quatrième classe.\n\nTout conducteur coupable de cette infraction encourt également la peine complémentaire de suspension, pour une durée de trois ans au plus, du permis de conduire, cette suspension pouvant être limitée à la conduite en dehors de l'activité professionnelle.\n\nCette contravention donne lieu de plein droit à la réduction de quatre points du permis de conduire.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "ae2e984de7ff6039ccce5fa7f3d4b9f364d5141fed1552dc29313c255c8489a3",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/route.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006074228.pdf/LEGI",
+            "text_sha256": "e919c887508ee8b9cbeacd6c90397dba2797d380b1488e3012dca5398975aa68",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": null,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 460
+          },
+          {
+            "id": "route:R415-12",
+            "source_id": "route",
+            "number": "R415-12",
+            "title": "Code de la route · article R415-12 [route:R415-12]",
+            "outline": "Partie réglementaire / Livre IV : L'usage des voies. / Titre Ier : Dispositions générales. / Chapitre V : Intersections et priorité de passage.",
+            "pages": [
+              463
+            ],
+            "text": "En toutes circonstances, tout conducteur est tenu de céder le passage aux véhicules d'intérêt général prioritaires annonçant leur approche par l'emploi des avertisseurs spéciaux prévus pour leur catégorie.\n\nLe fait, pour tout conducteur, de ne pas respecter les règles de priorité fixées au présent article est puni de l'amende prévue pour les contraventions de la quatrième classe.\n\nTout conducteur coupable de cette infraction encourt également la peine complémentaire de suspension, pour une durée de trois ans au plus, du permis de conduire, cette suspension pouvant être limitée à la conduite en dehors de l'activité professionnelle.\n\nCette contravention donne lieu de plein droit à la réduction de quatre points du permis de conduire.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "ae2e984de7ff6039ccce5fa7f3d4b9f364d5141fed1552dc29313c255c8489a3",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/route.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006074228.pdf/LEGI",
+            "text_sha256": "e8a1144df3884889fd68dc87410fcd11b5d90107f7760ca9881ade7cab043298",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -18.285585829027493,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 463
+          },
+          {
+            "id": "route:R415-10",
+            "source_id": "route",
+            "number": "R415-10",
+            "title": "Code de la route · article R415-10 [route:R415-10]",
+            "outline": "Partie réglementaire / Livre IV : L'usage des voies. / Titre Ier : Dispositions générales. / Chapitre V : Intersections et priorité de passage.",
+            "pages": [
+              462,
+              463
+            ],
+            "text": "Tout conducteur abordant un carrefour à sens giratoire est tenu, quel que soit le classement de la route qu'il s'apprête à quitter, de céder le passage aux usagers circulant sur la chaussée qui ceinture le carrefour à sens giratoire.\n\nLe fait, pour tout conducteur, de ne pas respecter les règles de priorité fixées au présent article est puni de l'amende prévue pour les contraventions de la quatrième classe.\n\nTout conducteur coupable de cette infraction encourt également la peine complémentaire de suspension, pour une durée de trois ans au plus, du permis de conduire, cette suspension pouvant être limitée à la conduite en dehors de l'activité professionnelle.\n\nCette contravention donne lieu de plein droit à la réduction de quatre points du permis de conduire.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "ae2e984de7ff6039ccce5fa7f3d4b9f364d5141fed1552dc29313c255c8489a3",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/route.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006074228.pdf/LEGI",
+            "text_sha256": "0aa85a91c6a597ce2bd8bb7ccba088edc9e3d9fc2ef4848925abd1c4ff08e228",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -17.860466984297116,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 462
+          },
+          {
+            "id": "route:R415-11",
+            "source_id": "route",
+            "number": "R415-11",
+            "title": "Code de la route · article R415-11 [route:R415-11]",
+            "outline": "Partie réglementaire / Livre IV : L'usage des voies. / Titre Ier : Dispositions générales. / Chapitre V : Intersections et priorité de passage.",
+            "pages": [
+              463
+            ],
+            "text": "Tout conducteur est tenu de céder le passage, au besoin en s'arrêtant, au piéton s'engageant régulièrement dans la traversée d'une chaussée ou manifestant clairement l'intention de le faire ou circulant dans une aire piétonne ou une zone de rencontre.\n\nLe fait, pour tout conducteur, de ne pas respecter les règles de priorité fixées au présent article est puni de l'amende prévue pour les contraventions de la quatrième classe.\n\nTout conducteur coupable de cette infraction encourt également la peine complémentaire de suspension, pour une durée de trois ans au plus, du permis de conduire, cette suspension pouvant être limitée à la conduite en dehors de l'activité professionnelle.\n\nCette contravention donne lieu de plein droit à la réduction de six points du permis de conduire.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "ae2e984de7ff6039ccce5fa7f3d4b9f364d5141fed1552dc29313c255c8489a3",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/route.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006074228.pdf/LEGI",
+            "text_sha256": "0ae2b18c602f33201eb8eb5eef47b115fcaa355a77f0de60191157904e4da23f",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -17.7856925164191,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 463
+          },
+          {
+            "id": "route:R415-9",
+            "source_id": "route",
+            "number": "R415-9",
+            "title": "Code de la route · article R415-9 [route:R415-9]",
+            "outline": "Partie réglementaire / Livre IV : L'usage des voies. / Titre Ier : Dispositions générales. / Chapitre V : Intersections et priorité de passage.",
+            "pages": [
+              462
+            ],
+            "text": "I. - Tout conducteur qui débouche sur une route en franchissant un trottoir ou à partir d'un accès non ouvert à la circulation publique, d'un chemin de terre ou d'une aire de stationnement ne doit s'engager sur la route qu'après s'être assuré qu'il peut le faire sans danger et qu'à une vitesse suffisamment réduite pour lui permettre un arrêt sur place.\n\nII. - Il doit céder le passage à tout autre véhicule.\n\nIII. - Le fait, pour tout conducteur, de contrevenir aux dispositions du II ci-dessus est puni de l'amende prévue pour les contraventions de la quatrième classe.\n\nIV. - Tout conducteur coupable de cette infraction encourt également la peine complémentaire de suspension, pour une durée de trois ans au plus, du permis de conduire, cette suspension pouvant être limitée à la conduite en dehors de l'activité professionnelle.\n\nV. - Cette contravention donne lieu de plein droit à la réduction de quatre points du permis de conduire.",
+            "last_modified": "20 août 2026",
+            "generated_date": "07 septembre 2026",
+            "pdf_sha256": "ae2e984de7ff6039ccce5fa7f3d4b9f364d5141fed1552dc29313c255c8489a3",
+            "pdf_path": "/Users/klodynlov/Projets/LibraryBrainLegal/snapshots/20260910T122957Z-updated/route.pdf",
+            "source_url": "https://www.legifrance.gouv.fr/download/file/pdf/LEGITEXT000006074228.pdf/LEGI",
+            "text_sha256": "f7b81bb9a2fc692fa1fd344361ce833f7646cb1fd61d8ac7dba1c13e2ae2d244",
+            "jurisdiction": "France",
+            "historical_validity": "not_established",
+            "retrieval_score": -15.14274668828724,
+            "author": "Légifrance · export 07 septembre 2026 · dernière modification 20 août 2026",
+            "page": 462
+          }
+        ],
+        "confidence": {
+          "level": "unverified"
+        },
+        "phase": "done",
+        "source_status": "retrieved",
+        "history_policy": "independent_questions",
+        "profile": "LoRA juridique V3 — extraits contrôlables, expérimental",
+        "adapter": "/Users/klodynlov/Projets/LibraryBrainLegal/experiments/20260910-lora-v3/adapters/best",
+        "adapter_sha256": "7714f6005da80d9eeccfda8ba3e87bac97f2dde80eba8f955547250ce27dc556",
+        "system_prompt_sha256": "980f0c957ac9c2c5de49e7c7c94c153c99fa2bda09d6f526e93c12457ea02f1e",
+        "base_model": "/Users/klodynlov/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-8bit/snapshots/0e42af58449718de7931ee04f28191fbe6c43a56",
+        "experimental": true,
+        "prompt_tokens": 1739,
+        "finish_reason": "stop",
+        "citation_audit": {
+          "cited_ids": [
+            "route:R415-5"
+          ],
+          "unexpected_ids": [],
+          "unsupported_article_mentions": [],
+          "has_allowed_citation": true,
+          "factual_correctness": "requires_legal_review"
+        },
+        "excerpt_audit": {
+          "excerpts": [
+            {
+              "quote": "Cette contravention donne lieu de plein droit à la réduction de quatre points du permis de conduire.",
+              "cited_ids": [
+                "route:R415-5"
+              ],
+              "found_in_source_ids": [
+                "route:R415-5",
+                "route:R415-12",
+                "route:R415-10",
+                "route:R415-9"
+              ],
+              "matches_supplied_text": true,
+              "matches_cited_source": true
+            }
+          ],
+          "unmatched_excerpts": 0,
+          "uncited_or_misattributed_excerpts": 0,
+          "legal_correctness": "not_established_by_a_literal_quote_match"
+        },
+        "audit_notice": "Extrait retrouvé dans la source citée. Cela ne valide pas le raisonnement juridique."
+      }
+    }
+  ],
+  "limitations": [
+    "Experimental legal reasoning, not validated by a jurist",
+    "Independent questions, history is not model context",
+    "No Code civil corpus",
+    "Generic Studio training disabled for this profile"
+  ],
+  "codesign": {
+    "local_ad_hoc_signature": true,
+    "deep_strict_verification": "passed",
+    "developer_id_or_notarization": false,
+    "repair": "Signed complete bundle; linker-only signature did not seal app resources."
+  }
+}

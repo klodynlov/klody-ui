@@ -14,11 +14,14 @@ export type ThemeMode = "light" | "dark" | "auto";
 export type EffectiveTheme = "light" | "dark";
 
 const STORAGE_KEY = "klody-theme";
+let memoryTheme: ThemeMode = "auto";
 const mql = window.matchMedia("(prefers-color-scheme: dark)");
 
 export function getThemeMode(): ThemeMode {
-  const v = localStorage.getItem(STORAGE_KEY);
-  return v === "light" || v === "dark" || v === "auto" ? v : "auto";
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    return v === "light" || v === "dark" || v === "auto" ? v : memoryTheme;
+  } catch { return memoryTheme; }
 }
 
 function osTheme(): EffectiveTheme {
@@ -48,7 +51,8 @@ export function applyTheme(mode: ThemeMode): EffectiveTheme {
 }
 
 export function setThemeMode(mode: ThemeMode): EffectiveTheme {
-  localStorage.setItem(STORAGE_KEY, mode);
+  memoryTheme = mode;
+  try { localStorage.setItem(STORAGE_KEY, mode); } catch { /* Préférence conservée en mémoire. */ }
   return applyTheme(mode);
 }
 

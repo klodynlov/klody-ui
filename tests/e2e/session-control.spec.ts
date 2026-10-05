@@ -44,6 +44,9 @@ test.describe("session control", () => {
     await textarea.fill("salut");
     await textarea.press("Enter");
     await expect(page.getByText("salut")).toBeVisible();
+    // Le backend a terminé : changer de session pendant un tour actif ferait
+    // disparaître une question alors que le serveur attend encore la réponse.
+    await emitWs(page, { type: "done" });
 
     // Cmd+K (Mac) — Playwright accepte "Meta"
     await page.keyboard.press("Meta+k");

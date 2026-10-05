@@ -1,0 +1,9 @@
+{
+  "id": "ea2b541ef49644e69f4239b5fd0ee08e",
+  "kind": "train",
+  "model": "music",
+  "status": "queued",
+  "created": 1788701989.6194491,
+  "name": "Validation atelier \u00b7 5 it\u00e9rations",
+  "iterations": 5
+}
