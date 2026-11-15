@@ -69,6 +69,47 @@ recommandation » restent exclues. Les anciens moteurs (`legal_worker.py`,
 `KLODY_STUDIO_SOURCE=system` classe les appels d'un banc hors de l'usage
 interactif dans le journal de la passerelle.
 
+## Fiches officielles Service-Public
+
+Business & Finance lit aussi les fiches pratiques de Service-Public.gouv.fr
+(DILA), publiées en open data sous Licence Ouverte 2.0 : la bibliothèque contient
+des ouvrages, peu de règles françaises à jour sur l'épargne, le crédit ou la
+fiscalité des placements. `public_guides.py` construit un index séparé, en
+lecture seule ; la base LibraryBrain n'est pas touchée.
+
+```sh
+python public_guides.py build --output "$ROOT/corpora/<édition>/edition" \
+    --archive particuliers=<vosdroits-latest.zip> --archive entreprendre=<vosdroits-latest.zip> \
+    --theme "Argent - Impôts - Consommation"
+python public_guides.py activate --root "$ROOT" --edition "$ROOT/corpora/<édition>/edition"
+```
+
+`$ROOT` est le projet du spécialiste (`~/Projets/BusinessPratique`). Les archives
+viennent de `lecomarquage.service-public.gouv.fr` (adresses dans
+`public_guides.DOWNLOAD`) ; rien n'est téléchargé automatiquement. Le manifeste
+garde l'adresse, le nom, la date et l'empreinte de chaque archive, comme la
+licence le demande ; chaque passage porte l'adresse et la date de sa fiche.
+
+Sans édition activée, le spécialiste répond depuis la bibliothèque seule. Pour
+revenir en arrière, supprimer `data/active_public_guides.json`. Une fiche dit la
+règle à sa date de mise à jour : reconstruire une édition pour la rafraîchir.
+Les fiches passent avant les ouvrages dans les sources proposées au modèle, et
+restent soumises aux mêmes contrôles d'extrait et de chiffres.
+
+Trois garde-fous accompagnent ces fiches :
+
+- un ouvrage n'est pas daté : un montant ou un taux (`€`, `%`) qui en vient est
+  affiché avec un avertissement, et il est écarté quand une fiche datée répond
+  dans la même réponse (vu : « 18 %, seuil 25 730 € » d'un manuel de 2008) ;
+- une demande de désigner un titre ou un moment d'achat (« quelle action acheter
+  demain ? ») est refusée avant toute recherche (`no_personal_pick`) ;
+- une fiche « à situations » (PEA classique, PME-ETI, jeune) est indexée situation
+  par situation : son corps n'est pas sous `<Texte>` mais sous `<ListeSituations>`.
+
+La recherche ne lemmatise pas : « plus-values » ne trouve pas « plus-value ».
+Élargir aux pluriels a été essayé et retiré, le classement se dégradait (la
+fiche Livret A sortait des six premières pour « plafond du livret A »).
+
 ## Réponses françaises
 
 `medical_french_worker.py` enveloppe le lecteur V8 sans modifier son code figé.

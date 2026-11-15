@@ -138,12 +138,104 @@ class LibraryRun(unittest.TestCase):
     SOURCE = {'book_id': 1, 'chunk_id': 2, 'title': 'Finance pour tous', 'author': 'A. Auteur', 'page': 12,
               'text': 'Une obligation est un titre de créance émis par une entreprise ou un État.'}
 
-    def run_job(self, context, call):
+    SHEET = {'id': 'particuliers:F1:p2', 'title': 'Livret A — Quel est le plafond ?', 'author': 'Service-Public.gouv.fr (DILA)',
+             'page': None, 'text': 'Le plafond du livret A est de 22 950 € pour une personne physique.',
+             'reference': 'Livret A — Quel est le plafond ? · Service-Public.gouv.fr (DILA) · mise à jour 2026-08-01'}
+
+    def run_job(self, context, call, sheets=()):
         saved = []
         with tempfile.TemporaryDirectory() as temp:
             library.run({'model': 'business', 'question': 'obligation ?', 'history': []}, saved.append, Path(temp), call=call,
-                        search=lambda plan, category, folder, here: context)
+                        search=lambda plan, category, folder, here: context, sheets=lambda spec, plan: [dict(s) for s in sheets])
         return saved[-1]
+
+    def test_a_request_to_pick_a_stock_is_refused_before_any_search_and_only_on_an_explicit_true(self):
+        asked = []
+
+        def call(system, data, max_tokens=0, pick=True):
+            asked.append(system)
+            return {'question': 'Quelle action acheter ?', 'recherches': ['action'], 'choix_personnel': pick}
+        context = {'sources': [], 'accepted_sources': 0, 'confidence': {'level': 'insufficient'}}
+        result = self.run_job(context, call, sheets=[self.SHEET])
+        self.assertTrue(result['abstained'])
+        self.assertIn('ne désigne aucun titre', result['answer'])
+        self.assertEqual(result['audit_notice'], 'Aucune recherche effectuée.')
+        self.assertIn('choix_personnel', asked[0])
+        self.assertEqual(len(asked), 1)
+        result = self.run_job(context, lambda *a, **k: call(*a, pick='oui') if 'echanges_precedents' in a[1] else accept(0), sheets=[])
+        self.assertNotIn('ne désigne aucun titre', result['answer'])
+
+    def test_books_carry_the_undated_figure_warning_and_official_sheets_do_not(self):
+        book = dict(self.SOURCE, text='Les gains sont imposables au taux de 18 % selon le régime décrit.')
+        context = {'sources': [book], 'accepted_sources': 1, 'confidence': {'level': 'high'}}
+
+        def call(system, data, max_tokens=0):
+            if 'echanges_precedents' in data:
+                return {'question': 'Imposition ?', 'recherches': ['imposition gains']}
+            if 'sources' in data:
+                return {'points': [{'titre': '', 'affirmation': 'Le plafond du livret A est de 22 950 €.', 'source': 'S1',
+                                    'extrait': 'Le plafond du livret A est de 22 950 € pour une personne physique.'},
+                                   {'titre': '', 'affirmation': 'Les gains sont imposables au taux de 18 %.', 'source': 'S2',
+                                    'extrait': 'Les gains sont imposables au taux de 18 % selon le régime décrit.'}], 'en_bref': ''}
+            return accept(2)
+        result = self.run_job(context, call, sheets=[self.SHEET])
+        # The dated sheet answers: the undated rate beside it is dropped, and said.
+        self.assertNotIn('18 %', result['answer'])
+        self.assertIn('22 950 €', result['answer'])
+        self.assertIn('non datée', result['grounding']['claims_rejected'][0]['motif'])
+        # Alone, the book still answers, with its warning under the figure.
+
+        def alone(system, data, max_tokens=0):
+            if 'echanges_precedents' in data:
+                return {'question': 'Imposition ?', 'recherches': ['imposition gains']}
+            if 'sources' in data:
+                return {'points': [{'titre': '', 'affirmation': 'Les gains sont imposables au taux de 18 %.', 'source': 'S1',
+                                    'extrait': 'Les gains sont imposables au taux de 18 % selon le régime décrit.'}], 'en_bref': ''}
+            return accept(1)
+        answer = self.run_job(context, alone, sheets=[])['answer']
+        self.assertEqual(answer.count('⚠'), 1)
+        self.assertIn('18 %', answer)
+
+    def test_official_sheet_answers_when_the_library_has_nothing_relevant(self):
+        context = {'sources': [self.SOURCE], 'accepted_sources': 0, 'confidence': {'level': 'insufficient'}}
+        seen = {}
+
+        def call(system, data, max_tokens=0):
+            if 'echanges_precedents' in data:
+                return {'question': 'Quel est le plafond du livret A ?', 'recherches': ['plafond livret A']}
+            if 'sources' in data:
+                seen['references'] = [s['reference'] for s in data['sources']]
+                return {'points': [{'titre': 'Plafond', 'affirmation': 'Le plafond du livret A est de 22 950 €.', 'source': 'S1',
+                                    'extrait': 'Le plafond du livret A est de 22 950 € pour une personne physique.'}], 'en_bref': ''}
+            return accept(1)
+        result = self.run_job(context, call, sheets=[self.SHEET])
+        self.assertFalse(result['abstained'])
+        self.assertEqual(seen['references'], [self.SHEET['reference']])
+        self.assertEqual(result['official_sheets'], 1)
+        self.assertIn('mise à jour 2026-08-01', result['answer'])
+
+    def test_official_sheets_come_before_accepted_books(self):
+        context = {'sources': [dict(self.SOURCE)], 'accepted_sources': 1, 'confidence': {'level': 'high'}}
+        order = {}
+
+        def call(system, data, max_tokens=0):
+            if 'sources' in data:
+                order['ids'] = [s['reference'].split(' · ')[0] for s in data['sources']]
+                return {'points': []}
+            return {'question': 'q ?', 'recherches': ['q']}
+        self.run_job(context, call, sheets=[self.SHEET])
+        self.assertEqual(order['ids'], ['Livret A — Quel est le plafond ?', 'Finance pour tous'])
+
+    def test_a_specialist_without_the_flag_never_reads_the_sheets(self):
+        self.assertTrue(MODELS['business'].get('public_guides'))
+        plan = {'question': 'q', 'recherches': ['q']}
+        with patch.object(library.public_guides, 'active', return_value=None):
+            self.assertEqual(library.official_sheets(MODELS['business'], plan), [])
+        with patch.object(library.public_guides, 'active', return_value=Path('/edition')), \
+             patch.object(library.public_guides, 'search', return_value=[self.SHEET]) as search:
+            self.assertEqual(library.official_sheets({'project': 'Autre'}, plan), [])
+            search.assert_not_called()
+            self.assertEqual(library.official_sheets(MODELS['business'], plan), [self.SHEET])
 
     def test_business_scope_now_reads_finance_shelves(self):
         self.assertEqual(MODELS['business']['worker'], 'library_grounded_worker.py')
