@@ -235,7 +235,24 @@ class LibraryRun(unittest.TestCase):
              patch.object(library.public_guides, 'search', return_value=[self.SHEET]) as search:
             self.assertEqual(library.official_sheets({'project': 'Autre'}, plan), [])
             search.assert_not_called()
-            self.assertEqual(library.official_sheets(MODELS['business'], plan), [self.SHEET])
+            self.assertEqual(library.official_sheets({'project': 'P', 'public_guides': True}, plan), [self.SHEET])
+
+    def test_sheets_come_before_doctrine_which_is_few_and_must_be_named_by_its_title(self):
+        # Measured 2026-11-15 on 40 questions: cited twice, one answer better, one worse. Off until it earns its place.
+        self.assertFalse(MODELS['business'].get('tax_doctrine'))
+        plan = {'question': 'q', 'recherches': ['r']}
+        doctrine = dict(self.SHEET, id='bofip:BOI-X:p1')
+        calls = []
+
+        def search(queries, edition, **options):
+            calls.append((edition.name, options))
+            return [doctrine] if edition.name == 'tax_doctrine' else [self.SHEET]
+        with patch.object(library.public_guides, 'active', side_effect=lambda root, name: Path('/e') / name), \
+             patch.object(library.public_guides, 'search', side_effect=search):
+            self.assertEqual(library.official_sheets({'project': 'P', 'public_guides': True, 'tax_doctrine': True}, plan), [self.SHEET, doctrine])
+            self.assertEqual(library.official_sheets({'project': 'P', 'tax_doctrine': True}, plan), [doctrine])
+        self.assertEqual(calls[0], ('public_guides', {'limit': 6}))
+        self.assertEqual(calls[1], ('tax_doctrine', {'limit': 2, 'needed': 3, 'titled': 2}))
 
     def test_business_scope_now_reads_finance_shelves(self):
         self.assertEqual(MODELS['business']['worker'], 'library_grounded_worker.py')

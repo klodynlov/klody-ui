@@ -20,7 +20,7 @@ RULES = '''- "recherches" : une requête en français ET une requête en anglais
 COMPOSE_RULES = '''- Rapporte ce que les ouvrages énoncent (méthode, définition, étapes, mise en garde). Distingue une méthode proposée par un auteur d'un fait établi.
 - N'invente aucun chiffre propre à l'utilisateur, aucun rendement garanti, aucun taux légal ou fiscal actuel. Ne recommande aucun placement ni produit financier particulier : décris les notions et les critères que les sources donnent.
 - Si la question demande une marche à suivre, ordonne les points comme des étapes.
-- Une fiche officielle (Service-Public.gouv.fr) énonce la règle française à sa date de mise à jour : préfère-la à un ouvrage pour un plafond, un taux, une condition ou une imposition, et donne sa date quand un chiffre en dépend.
+- Une source officielle (fiche Service-Public.gouv.fr, doctrine fiscale BOFiP) énonce la règle française à sa date : préfère-la à un ouvrage pour un plafond, un taux, une condition ou une imposition, et donne sa date quand un chiffre en dépend. Pour une question de particulier, commence par la fiche pratique ; le BOFiP la précise.
 '''
 PICK_RULE = '''- Ajoute à l'objet "choix_personnel" : true si la question demande de désigner POUR l'utilisateur quel titre, quelle action, quelle cryptomonnaie ou quel produit précis acheter ou vendre, ou à quel moment (« quelle action acheter demain ? », « dois-je vendre mes bitcoins ? »). false pour une question de notion, de fonctionnement, de règle, de comparaison, ou pour une demande générale de pistes (« comment placer 1000 euros ? », « comment faire fructifier mon épargne ? ») : seul un titre nommément attendu ou un moment d'achat ou de vente rend true.
 '''
@@ -51,14 +51,18 @@ def retrieve(plan, category, folder, here):
 
 
 def official_sheets(spec, plan):
-    """Passages of the activated official sheets for this specialist, if it reads any."""
-    if not spec.get('public_guides'):
-        return []
-    edition = public_guides.active(Path.home() / 'Projets' / spec['project'])
-    if edition is None:
-        return []
-    # French queries only: the sheets are in French and English keywords add noise.
-    return public_guides.search([plan['question'], *plan['recherches']], edition, limit=6)
+    """Passages of the activated official sources this specialist reads: practical sheets, then tax doctrine."""
+    root = Path.home() / 'Projets' / spec['project']
+    # French queries only: these sources are in French and English keywords add noise.
+    queries = [plan['question'], *plan['recherches']]
+    found = []
+    # Doctrine is long and technical: two passages at most, and only from a
+    # document whose title names the subject (seen: « action » matching « action en recouvrement »).
+    for name, options in (('public_guides', {'limit': 6}), ('tax_doctrine', {'limit': 2, 'needed': 3, 'titled': 2})):
+        edition = public_guides.active(root, name) if spec.get(name) else None
+        if edition is not None:
+            found += public_guides.search(queries, edition, **options)
+    return found
 
 
 def run(job, save, folder, call=grounded.llm, search=retrieve, sheets=official_sheets):

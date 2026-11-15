@@ -115,6 +115,61 @@ class PublicGuides(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'manifeste'):
             g.active(self.root)
 
+    DOCTRINE = ('<p class=""commentaire-de-tableau-western""><strong>Actualité liée : </strong>18/08/2025</p>'
+                '<p class=""numero-de-paragraphe-western"" id=""1_00"">1</p>'
+                '<p class=""paragraphe-western"">Les gains nets de cession de valeurs mobilières sont imposés à l’impôt sur le revenu.</p>'
+                '<h1 id=""I"">I. Règles de droit commun</h1><h2>A. Taux forfaitaire de 12,8&nbsp;%</h2>'
+                '<p class=""numero-de-paragraphe-western"">10</p>'
+                '<p class=""paragraphe-western"">L’impôt est établi par application d’un taux forfaitaire de 12,8&nbsp;% à l’assiette imposable.</p>'
+                '<ul><li>premier cas visé par le texte</li><li>second cas</li></ul>'
+                '<table><tr><th>Durée</th><th>Abattement</th></tr><tr><td>Deux ans</td><td>50 %</td></tr></table>'
+                '<h2>B. Option pour le barème</h2><p>Le contribuable peut opter pour le barème progressif de l’impôt sur le revenu.</p>')
+
+    def doctrine_export(self, rows):
+        path = self.root / 'bofip.jsonl'
+        path.write_text('\n'.join(json.dumps(r, ensure_ascii=False) for r in rows) + '\nnot json\n')
+        return path
+
+    def doctrine_row(self, ident='BOI-RPPM-PVBMI-30-20', serie='RPPM', kind='Contenu', title='RPPM - Plus-values sur biens meubles incorporels'):
+        return {'type': kind, 'titre': title, 'serie': serie, 'identifiant_juridique': ident, 'debut_de_validite': '2025-08-18',
+                'permalien': 'https://bofip.impots.gouv.fr/bofip/3623-PGP.html/identifiant=' + ident, 'contenu_html': self.DOCTRINE}
+
+    def test_doctrine_sections_follow_headings_and_drop_paragraph_numbers(self):
+        sections = dict(g.parse_doctrine(self.DOCTRINE))
+        self.assertEqual(list(sections), ['Présentation', 'I. Règles de droit commun — A. Taux forfaitaire de 12,8 %',
+                                          'I. Règles de droit commun — B. Option pour le barème'])
+        self.assertEqual(sections['Présentation'], 'Actualité liée : 18/08/2025\n'
+                         'Les gains nets de cession de valeurs mobilières sont imposés à l’impôt sur le revenu.')
+        body = sections['I. Règles de droit commun — A. Taux forfaitaire de 12,8 %']
+        self.assertEqual(body.split('\n'), ['L’impôt est établi par application d’un taux forfaitaire de 12,8 % à l’assiette imposable.',
+                                            'premier cas visé par le texte', 'second cas', 'Durée | Abattement', 'Deux ans | 50 %'])
+
+    def test_doctrine_edition_is_separate_dated_filtered_and_searched_by_title(self):
+        export = self.doctrine_export([self.doctrine_row(), self.doctrine_row(), self.doctrine_row('BOI-REC-1', 'REC'),
+                                       self.doctrine_row('BOI-ACTU', kind='Actualité'),
+                                       self.doctrine_row('BOI-IR-1', 'IR', title='IR - Liquidation')])
+        folder = self.root / 'corpora/bofip'
+        manifest = g.build_doctrine(folder, export, {'RPPM', 'IR'}, built_at='2026-11-15T00:00:00+00:00', download_url='https://data.example/export')
+        self.assertEqual((manifest['sheets'], manifest['rejected'], manifest['by_theme']), (2, 1, {'RPPM': 1, 'IR': 1}))
+        self.assertEqual(manifest['publisher'], 'BOFiP-Impôts (DGFiP)')
+        self.assertEqual((manifest['archives'][0]['download_url'], len(manifest['archives'][0]['sha256'])), ('https://data.example/export', 64))
+        found = g.search(['taux forfaitaire des plus-values'], folder, limit=2, needed=3, titled=2)
+        self.assertEqual(found[0]['reference'], 'BOI-RPPM-PVBMI-30-20 — RPPM - Plus-values sur biens meubles incorporels — I. Règles de droit commun'
+                         ' — A. Taux forfaitaire de 12,8 % · BOFiP-Impôts (DGFiP) · en vigueur, version du 2025-08-18')
+        self.assertTrue(found[0]['source_url'].endswith('BOI-RPPM-PVBMI-30-20'))
+        self.assertNotIn('\n10\n', found[0]['text'])
+        # The body of every document has these words; only a title naming the subject is offered.
+        self.assertEqual(g.search(['assiette imposable application'], folder, limit=2, needed=3, titled=2), [])
+        self.assertTrue(g.search(['assiette imposable application'], folder, limit=2, needed=3))
+        # Two editions live side by side, each behind its own pointer.
+        self.build()
+        g.activate(self.root, self.root / 'corpora/edition')
+        g.activate(self.root, folder, 'tax_doctrine')
+        self.assertEqual(g.active(self.root).name, 'edition')
+        self.assertEqual(g.active(self.root, 'tax_doctrine').name, 'bofip')
+        with self.assertRaises(ValueError):
+            g.active(self.root, '../other')
+
     def test_index_missing_passages_cannot_be_activated(self):
         self.build()
         edition = self.root / 'corpora/edition'
