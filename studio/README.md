@@ -35,6 +35,40 @@ service pendant une opération active. Les tests `test_medical_v*.py` et
 `test_legal.py` vérifient les installations locales et leurs artefacts ; ils ne
 sont pas des tests d’inférence utilisables sur un runner GitHub sans ces données.
 
+## Réponses structurées vérifiées
+
+`grounded_answer.py` est le moteur de réponse de Juridique, Médical et Business &
+Finance (`legal_grounded_worker.py`, `medical_grounded_worker.py`,
+`library_grounded_worker.py`). Le modèle local 35B, appelé par la passerelle
+`:8090`, ne rédige plus librement :
+
+1. il résout la question avec la conversation (relances, fautes de frappe,
+   langage courant) et propose des pistes de recherche ;
+2. la recherche reste celle de chaque spécialiste (corpus juridique activé,
+   lecteur médical V8, seuils LibraryBrain) ;
+3. il écrit 1 à 5 affirmations, chacune avec un extrait recopié de sa source ;
+4. le programme vérifie chaque extrait dans la source citée, refuse tout
+   chiffre absent de cette source (en chiffres ou en lettres), puis fait relire
+   chaque affirmation contre son seul extrait. Ce qui échoue est retiré ; s'il
+   ne reste rien, la réponse est une abstention expliquée.
+
+La tolérance de comparaison couvre l'espacement, la typographie et les dégâts
+d'extraction PDF (ligatures perdues, mots coupés), jamais un chiffre. Le texte
+« ce que les sources ne disent pas » est remplacé par une phrase neutre s'il
+contient un chiffre absent des sources. Cette garantie est documentaire : elle
+ne valide ni l'actualité d'un texte ni son application à une situation.
+
+En juridique, les articles pressentis par le modèle ne sont que des pistes : le
+programme lit le texte réel, dans le code nommé, et suit une fois les renvois
+(« l'amende prévue pour les contraventions de la quatrième classe »). En
+médical, les questions de prise en charge peuvent s'appuyer sur les ouvrages de
+référence en plus des publications HAS datées ; posologies et « dernière
+recommandation » restent exclues. Les anciens moteurs (`legal_worker.py`,
+`medical_french_worker.py`, `worker.py`) et leurs profils figés sont conservés.
+
+`KLODY_STUDIO_SOURCE=system` classe les appels d'un banc hors de l'usage
+interactif dans le journal de la passerelle.
+
 ## Réponses françaises
 
 `medical_french_worker.py` enveloppe le lecteur V8 sans modifier son code figé.

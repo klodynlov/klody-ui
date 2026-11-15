@@ -17,7 +17,8 @@ class LegalIntegrationTests(unittest.TestCase):
     def test_catalog_uses_legal_profile_and_distinct_review_metrics(self):
         info = server.model_info('legal')
         self.assertTrue(info['available'], info)
-        self.assertEqual(info['version'], 'v3')
+        self.assertEqual((info['name'], info['version'], info['parameters']), ('Juridique', 'v4', '35B'))
+        self.assertIsNone(info['validation_gate'])
         self.assertFalse(info['validation_gate'])
         self.assertFalse(info['supports_training'])
         self.assertEqual(info['metrics'], {})
@@ -42,7 +43,7 @@ class LegalIntegrationTests(unittest.TestCase):
                 client = TestClient(server.app)
                 response = client.post('/api/chat', json={'model': 'legal', 'question': 'Article R415-5 ?'}, headers=HEADERS)
                 self.assertEqual(response.status_code, 202)
-                self.assertEqual(Path(engine.commands(response.json())[0][1]).name, 'legal_worker.py')
+                self.assertEqual(Path(engine.commands(response.json())[0][1]).name, 'legal_grounded_worker.py')
                 response = client.post('/api/train', json={'model': 'legal', 'name': 'test', 'iterations': 2}, headers=HEADERS)
                 self.assertEqual(response.status_code, 409)
                 self.assertEqual(len(engine.jobs), 1)

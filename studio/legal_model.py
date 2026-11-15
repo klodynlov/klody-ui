@@ -39,9 +39,12 @@ def profile(root):
 
 def model_info(root, spec, ident):
     info = {'id': ident, 'name': spec['name'], 'description': spec['description'], 'domains': spec['domains'],
-            'version': 'v3', 'parameters': '4B', 'available': False, 'size_gb': 0, 'category': None,
+            # Answers are written by the local 35B over the activated corpus
+            # (legal_grounded_worker.py). The V3 LoRA below stays as the pinned,
+            # evaluated artefact; its failed selection gate is not this engine's.
+            'version': 'v4', 'parameters': '35B', 'available': False, 'size_gb': 0, 'category': None,
             'dataset': {}, 'metrics': {}, 'experimental': True, 'evaluated': False,
-            'validation_gate': False, 'supports_training': False, 'preparation': {}}
+            'validation_gate': None, 'supports_training': False, 'preparation': {}}
     try:
         data = profile(root)
         info.update(available=True, size_gb=round((sum(p.stat().st_size for p in Path(data['base_model']).glob('*.safetensors')) +
