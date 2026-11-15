@@ -441,6 +441,11 @@ CORRECTION DEMANDÉE : certains points ont été refusés par le contrôle ("a_c
 '''
 
 
+RESTART = '''
+NOUVEL ESSAI : ta première réponse n'a établi aucun point ("refuse" donne ce qui a été écarté et pourquoi). Relis toutes les sources, repère celles qui répondent directement à la question, et écris 2 à 4 points, chacun appuyé par un extrait recopié mot pour mot d'une seule source. Si vraiment aucune source ne répond, rends "points": [].
+'''
+
+
 def resolve(question, history, domain, extra_rules='', call=llm):
     """Standalone question and search terms. Falls back to the literal question."""
     turns = [{'role': m.get('role'), 'content': str(m.get('content', ''))[:900]} for m in (history or [])[-6:]]
@@ -511,6 +516,22 @@ def compose(question, sources, domain_rules='', hint='', searched=(), call=llm):
     kept, reread, reread_summary = second_reading(kept, sources, question, call)
     audit['second_reading'] = reread is not None
     rejected += reread or []
+    if not kept and rejected and 'claims_repaired' not in audit:
+        # Seen 2026-11-15: twelve sources, a single claim drawn from the weakest one, refused
+        # at the second reading — an abstention while two sources answered. One more draft,
+        # told what failed, under the same controls.
+        try:
+            redo = call(COMPOSE + domain_rules + RESTART, {'question': question, 'sources': source_block(sources),
+                                                          'refuse': rejected}, 1200)
+            again, still = verify(redo.get('points'), sources, question)
+        except LLMError:
+            again, still = [], []
+        audit['restarted'] = True
+        if again:
+            kept, reread, reread_summary = second_reading(again, sources, question, call)
+            audit['second_reading'] = reread is not None
+            rejected = still + (reread or [])
+            draft = {**redo, 'salvaged': True}
     if any(not sources[p['source_index']].get('figure_caution') for p in kept):
         # A dated source answers: an amount or a rate from an undated one beside it
         # would read as current too (seen: a 2008 « 18 % » next to a 2026 sheet).

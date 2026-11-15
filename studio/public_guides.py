@@ -12,6 +12,13 @@ specialist simply answers from the library as before.
         --theme "Argent - Impôts - Consommation"
     python public_guides.py activate --root ~/Projets/BusinessPratique --edition <edition dir>
 
+The tax doctrine in force (BOFiP-Impôts, DGFiP, same licence) is a second,
+separate edition, built from the « publications en vigueur » export:
+
+    python public_guides.py build-doctrine --output <edition dir> --export <bofip-vigueur.jsonl> \
+        --download-url <export URL>
+    python public_guides.py activate --root ~/Projets/BusinessPratique --edition <edition dir> --name tax_doctrine
+
 Licence Ouverte requires naming the source, the download URL, the file and its
 date: the manifest keeps them and every passage carries its sheet URL and date.
 """
@@ -19,6 +26,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import hashlib
+from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
@@ -31,7 +39,8 @@ LICENCE = 'Licence Ouverte / Open Licence 2.0'
 PUBLISHER = 'Service-Public.gouv.fr (DILA)'
 DOWNLOAD = {'particuliers': 'https://lecomarquage.service-public.gouv.fr/vdd/3.5/part/zip/vosdroits-latest.zip',
             'entreprendre': 'https://lecomarquage.service-public.gouv.fr/vdd/3.5/pro/zip/vosdroits-latest.zip'}
-POINTER = 'data/active_public_guides.json'
+DOCTRINE = 'BOFiP-Impôts (DGFiP)'
+NAMES = ('public_guides', 'tax_doctrine')
 MAX_PASSAGE = 3200
 # Structural containers whose own text is laid out on separate lines.
 BLOCKS = {'Paragraphe', 'Item', 'Titre', 'Cas', 'Rangée', 'ASavoir', 'ANoter', 'Attention', 'Rappel', 'SousChapitre'}
@@ -150,8 +159,74 @@ def parse_sheet(raw, audience):
     return sheet if sheet['passages'] else None
 
 
-def build(output, archives, themes=None, built_at=None):
-    """Index the sheets of the given archives. `themes` limits one audience: {'particuliers': {...}}."""
+class DoctrineText(HTMLParser):
+    """BOFiP HTML -> titled sections, one line per paragraph, list item or table row.
+
+    Paragraph numbers (« 10 », « 20 ») are navigation, not content: left in the
+    text they would count as figures the source « contains ».
+    """
+    LINES = {'p', 'li', 'tr', 'blockquote', 'caption', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.sections, self.lines, self.current = [], [], []
+        self.titles, self.heading, self.skip, self.level = {}, 'Présentation', False, 0
+
+    def flush(self):
+        text = ' '.join(''.join(self.current).split()).strip(' |')
+        self.current = []
+        return text
+
+    def close_section(self):
+        line = self.flush()
+        if line:
+            self.lines.append(line)
+        if self.lines:
+            self.sections.append((self.heading, '\n'.join(self.lines)))
+        self.lines = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
+            self.close_section()
+            self.level = int(tag[1])
+        elif tag in self.LINES:
+            line = self.flush()
+            if line:
+                self.lines.append(line)
+            self.skip = tag == 'p' and 'numero-de-paragraphe' in (dict(attrs).get('class') or '')
+        elif tag in ('td', 'th') and self.current:
+            self.current.append(' | ')
+
+    def handle_endtag(self, tag):
+        if tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6') and self.level:
+            title = self.flush()
+            self.titles = {k: v for k, v in self.titles.items() if k < self.level}
+            self.titles[self.level] = title
+            top = self.titles.get(min(self.titles))
+            self.heading = ' — '.join(dict.fromkeys(t for t in (top, title) if t)) or 'Détail'
+            self.level = 0
+        elif tag == 'p':
+            self.skip = False
+            line = self.flush()
+            if line:
+                self.lines.append(line)
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.current.append(data)
+
+
+def parse_doctrine(html):
+    """Titled sections of one BOFiP document."""
+    reader = DoctrineText()
+    # The export doubles every attribute quote (class=""x""): the class would be lost.
+    reader.feed((html or '').replace('""', '"'))
+    reader.close()
+    reader.close_section()
+    return [(heading, text) for heading, text in reader.sections if len(text) >= 40]
+
+
+def create_index(output):
     output = Path(output)
     if (output / 'index.sqlite').exists():
         raise ValueError('Cette édition existe déjà : choisir un nouveau dossier.')
@@ -160,6 +235,61 @@ def build(output, archives, themes=None, built_at=None):
     db.executescript('''CREATE TABLE sheets (id TEXT PRIMARY KEY, audience TEXT, title TEXT, theme TEXT, url TEXT, modified TEXT);
         CREATE TABLE passages (id TEXT PRIMARY KEY, sheet_id TEXT, heading TEXT, text TEXT);
         CREATE VIRTUAL TABLE search USING fts5(title, heading, text, tokenize='unicode61 remove_diacritics 2');''')
+    return db
+
+
+def add_document(db, key, audience, title, theme, url, modified, passages):
+    """Returns the number of passages written."""
+    db.execute('INSERT INTO sheets VALUES (?,?,?,?,?,?)', (key, audience, title, theme, url, modified))
+    number = 0
+    for heading, text in passages:
+        for piece in split(text):
+            number += 1
+            cursor = db.execute('INSERT INTO passages VALUES (?,?,?,?)', (f'{key}:p{number}', key, heading, piece))
+            db.execute('INSERT INTO search(rowid,title,heading,text) VALUES (?,?,?,?)', (cursor.lastrowid, title, heading, piece))
+    return number
+
+
+def build_doctrine(output, export, series=None, built_at=None, download_url=''):
+    """Index the doctrine in force from the « bofip-vigueur » JSON-lines export."""
+    output, export = Path(output), Path(export)
+    db = create_index(output)
+    manifest = {'publisher': DOCTRINE, 'licence': LICENCE, 'date_label': 'en vigueur, version du',
+                'built_at': built_at or datetime.now(timezone.utc).isoformat(), 'archives': [],
+                'sheets': 0, 'passages': 0, 'rejected': 0, 'by_theme': {}}
+    seen = set()
+    with export.open(encoding='utf-8') as lines:
+        for line in lines:
+            try:
+                row = json.loads(line)
+                ident, title = row['identifiant_juridique'], row['titre']
+            except (ValueError, KeyError, TypeError):
+                manifest['rejected'] += 1
+                continue
+            theme = row.get('serie') or ''
+            if row.get('type') != 'Contenu' or not ident or not title or ident in seen or (series and theme not in series):
+                continue
+            passages = parse_doctrine(row.get('contenu_html'))
+            if not passages:
+                continue
+            seen.add(ident)
+            manifest['passages'] += add_document(db, 'bofip:' + ident, 'bofip', ident + ' — ' + title, theme,
+                                                 row.get('permalien') or '', row.get('debut_de_validite') or '', passages)
+            manifest['sheets'] += 1
+            manifest['by_theme'][theme] = manifest['by_theme'].get(theme, 0) + 1
+    db.commit()
+    db.close()
+    manifest['archives'].append({'audience': 'bofip', 'file': export.name, 'sha256': sha(export), 'sheets': manifest['sheets'],
+                                 'download_url': download_url, 'themes': sorted(series) if series else 'all',
+                                 'file_date': datetime.fromtimestamp(export.stat().st_mtime).strftime('%Y-%m-%d')})
+    (output / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
+    return manifest
+
+
+def build(output, archives, themes=None, built_at=None):
+    """Index the sheets of the given archives. `themes` limits one audience: {'particuliers': {...}}."""
+    output = Path(output)
+    db = create_index(output)
     manifest = {'publisher': PUBLISHER, 'licence': LICENCE, 'built_at': built_at or datetime.now(timezone.utc).isoformat(),
                 'archives': [], 'sheets': 0, 'passages': 0, 'rejected': 0, 'by_theme': {}}
     for audience, path in archives.items():
@@ -178,16 +308,8 @@ def build(output, archives, themes=None, built_at=None):
                 if sheet is None or (wanted and sheet['theme'] not in wanted):
                     continue
                 key = audience + ':' + sheet['id']
-                db.execute('INSERT INTO sheets VALUES (?,?,?,?,?,?)',
-                           (key, audience, sheet['title'], sheet['theme'], sheet['url'], sheet['modified']))
-                number = 0
-                for heading, text in sheet['passages']:
-                    for piece in split(text):
-                        number += 1
-                        cursor = db.execute('INSERT INTO passages VALUES (?,?,?,?)', (f'{key}:p{number}', key, heading, piece))
-                        db.execute('INSERT INTO search(rowid,title,heading,text) VALUES (?,?,?,?)',
-                                   (cursor.lastrowid, sheet['title'], heading, piece))
-                        manifest['passages'] += 1
+                manifest['passages'] += add_document(db, key, audience, sheet['title'], sheet['theme'], sheet['url'],
+                                                     sheet['modified'], sheet['passages'])
                 kept += 1
                 manifest['by_theme'][sheet['theme']] = manifest['by_theme'].get(sheet['theme'], 0) + 1
         manifest['sheets'] += kept
@@ -200,7 +322,13 @@ def build(output, archives, themes=None, built_at=None):
     return manifest
 
 
-def activate(root, edition):
+def pointer_path(root, name):
+    if name not in NAMES:
+        raise ValueError('Source officielle inconnue : ' + str(name))
+    return Path(root) / 'data' / f'active_{name}.json'
+
+
+def activate(root, edition, name='public_guides'):
     root, edition = Path(root), Path(edition).resolve()
     if not edition.is_relative_to((root / 'corpora').resolve()):
         raise ValueError('L’édition doit être dans le dossier corpora du projet.')
@@ -210,7 +338,7 @@ def activate(root, edition):
             raise ValueError('Index endommagé.')
         if db.execute('SELECT count(*) FROM passages').fetchone()[0] != manifest['passages'] or not manifest['passages']:
             raise ValueError('L’index ne correspond pas à son manifeste.')
-    pointer = root / POINTER
+    pointer = pointer_path(root, name)
     pointer.parent.mkdir(parents=True, exist_ok=True)
     temp = pointer.with_suffix('.tmp')
     temp.write_text(json.dumps({'relative_path': str(edition.relative_to(root.resolve())),
@@ -219,9 +347,9 @@ def activate(root, edition):
     return pointer
 
 
-def active(root):
+def active(root, name='public_guides'):
     """Activated edition folder, or None. A changed manifest is an error, not a silent fallback."""
-    pointer = Path(root) / POINTER
+    pointer = pointer_path(root, name)
     if not pointer.exists():
         return None
     selected = json.loads(pointer.read_text())
@@ -239,18 +367,22 @@ def terms(text):
     return list(dict.fromkeys(t for t in re.findall(r'[a-z0-9]+', norm(text)) if len(t) >= 3 and t not in STOP))
 
 
-def search(queries, folder, limit=6):
+def search(queries, folder, limit=6, needed=2, titled=0):
     """Best passages for the queries, at most two per sheet. Title words weigh most.
 
     BM25 has no relevance threshold: a passage is kept only if it carries at
     least two distinct query terms (one when the queries have a single term), so
     a sheet sharing one common word with the question is not offered as a source.
+    `titled` asks that many of them in the title or heading: a long doctrine page
+    mentions every common tax word somewhere, its title says what it is about.
     """
     wanted = list(dict.fromkeys(t for q in queries for t in terms(q)))[:24]
     if not wanted:
         return []
     match = ' OR '.join('"' + t + '"' for t in wanted)
-    needed = 1 if len(wanted) == 1 else 2
+    needed = min(needed, len(wanted))
+    manifest = json.loads(Path(folder, 'manifest.json').read_text())
+    publisher, dated = manifest.get('publisher', PUBLISHER), manifest.get('date_label', 'mise à jour')
     found, per_sheet = [], {}
     with sqlite3.connect(Path(folder, 'index.sqlite').resolve().as_uri() + '?mode=ro', uri=True) as db:
         db.row_factory = sqlite3.Row
@@ -261,13 +393,14 @@ def search(queries, folder, limit=6):
     for row in rows:
         carried = set(terms(row['title'] + ' ' + row['heading'] + ' ' + row['text'])) & set(wanted)
         sheet = row['id'].rsplit(':', 1)[0]
-        if len(carried) < needed or per_sheet.get(sheet, 0) >= 2:
+        named = set(terms(row['title'] + ' ' + row['heading'])) & set(wanted)
+        if len(carried) < needed or len(named) < min(titled, len(wanted)) or per_sheet.get(sheet, 0) >= 2:
             continue
         per_sheet[sheet] = per_sheet.get(sheet, 0) + 1
-        found.append({'id': row['id'], 'title': row['title'] + ' — ' + row['heading'], 'author': PUBLISHER,
+        found.append({'id': row['id'], 'title': row['title'] + ' — ' + row['heading'], 'author': publisher,
                       'page': None, 'text': row['text'], 'category': row['theme'], 'source_url': row['url'],
-                      'modified': row['modified'], 'kind': 'fiche officielle', 'retrieval_score': row['score'],
-                      'reference': f"{row['title']} — {row['heading']} · {PUBLISHER} · mise à jour {row['modified'] or 'non datée'}"})
+                      'modified': row['modified'], 'kind': 'source officielle', 'retrieval_score': row['score'],
+                      'reference': f"{row['title']} — {row['heading']} · {publisher} · {dated} {row['modified'] or 'non datée'}"})
         if len(found) >= limit:
             break
     return found
@@ -280,16 +413,25 @@ def main():
     make.add_argument('--output', required=True)
     make.add_argument('--archive', action='append', required=True, metavar='AUDIENCE=ZIP')
     make.add_argument('--theme', action='append', default=[], help='Limit the « particuliers » archive to these themes.')
+    doctrine = commands.add_parser('build-doctrine')
+    doctrine.add_argument('--output', required=True)
+    doctrine.add_argument('--export', required=True, help='JSON lines export of « bofip-vigueur ».')
+    doctrine.add_argument('--series', action='append', default=[], help='Limit to these series (IR, RPPM, …).')
+    doctrine.add_argument('--download-url', default='')
     use = commands.add_parser('activate')
     use.add_argument('--root', required=True)
     use.add_argument('--edition', required=True)
+    use.add_argument('--name', default='public_guides', choices=NAMES)
     args = parser.parse_args()
     if args.command == 'build':
         archives = dict(item.split('=', 1) for item in args.archive)
         manifest = build(args.output, archives, {'particuliers': set(args.theme)} if args.theme else None)
         print(json.dumps({k: manifest[k] for k in ('sheets', 'passages', 'rejected', 'by_theme')}, ensure_ascii=False, indent=2))
+    elif args.command == 'build-doctrine':
+        manifest = build_doctrine(args.output, args.export, set(args.series) or None, download_url=args.download_url)
+        print(json.dumps({k: manifest[k] for k in ('sheets', 'passages', 'rejected', 'by_theme')}, ensure_ascii=False, indent=2))
     else:
-        print(activate(args.root, args.edition))
+        print(activate(args.root, args.edition, args.name))
 
 
 if __name__ == '__main__':

@@ -96,6 +96,34 @@ règle à sa date de mise à jour : reconstruire une édition pour la rafraîchi
 Les fiches passent avant les ouvrages dans les sources proposées au modèle, et
 restent soumises aux mêmes contrôles d'extrait et de chiffres.
 
+### Doctrine fiscale (BOFiP)
+
+Le même module indexe, dans une édition séparée, la doctrine fiscale en vigueur
+(BOFiP-Impôts, DGFiP, même licence), à partir de l'export « publications en
+vigueur » de data.economie.gouv.fr :
+
+```sh
+python public_guides.py build-doctrine --output "$ROOT/corpora/<édition>/edition" \
+    --export <bofip-vigueur.jsonl> --download-url <adresse de l'export> --series IR --series RPPM
+python public_guides.py activate --root "$ROOT" --edition "$ROOT/corpora/<édition>/edition" --name tax_doctrine
+```
+
+Chaque édition a son pointeur (`data/active_public_guides.json`,
+`data/active_tax_doctrine.json`) ; un spécialiste lit celles que son entrée de
+`models.py` déclare. Les fiches pratiques passent d'abord. La doctrine est longue
+et technique : deux passages au plus, et seulement d'un document dont le titre
+nomme le sujet — sans cela « action » ramenait « action en recouvrement ». Les
+numéros de paragraphe (10, 20…) sont retirés du texte : ils compteraient comme
+des chiffres que la source « contient ». Les « Actualités » et les séries de
+procédure ne sont pas indexées.
+
+Aucun spécialiste ne déclare `tax_doctrine` pour l'instant. Mesuré le 2026-11-15
+sur 40 questions de finance et de fiscalité avec Business & Finance : la doctrine
+n'est citée que deux fois, une réponse y gagne (report d'imposition d'un apport
+de titres), une autre y perd (assurance-vie), les fiches pratiques répondant déjà
+au reste. La recherche par mots-clés classe mal ces textes longs. L'édition se
+construit et s'active, mais reste hors des réponses tant qu'elle ne fait pas mieux.
+
 Trois garde-fous accompagnent ces fiches :
 
 - un ouvrage n'est pas daté : un montant ou un taux (`€`, `%`) qui en vient est

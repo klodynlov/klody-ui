@@ -156,6 +156,29 @@ class Composition(unittest.TestCase):
         self.assertIn('Recherches effectuées : rétractation', result['answer'])
         self.assertNotIn('14 jours', result['answer'])
 
+    def test_nothing_left_after_the_second_reading_gets_one_new_draft_under_the_same_controls(self):
+        weak = {'titre': 'Amende', 'affirmation': 'L’amende est de 750 euros au plus.', 'source': 'S2',
+                'extrait': '750 euros au plus pour les contraventions de la 4e classe'}
+        refused = {'verdicts': [{'n': 1, 'etabli': False, 'motif': 'hors sujet'}]}
+        call = scripted(self.draft(weak), refused, self.draft(GOOD, summary='Résumé du second essai.'), {**accept(1), 'en_bref': 'Délai de quatorze jours.'})
+        result = g.compose('q', SOURCES, call=call)
+        self.assertFalse(result['abstained'])
+        self.assertTrue(result['grounding']['restarted'])
+        self.assertNotIn('750', result['answer'])
+        self.assertIn('Délai de quatorze jours.', result['answer'])
+        self.assertNotIn('Résumé du second essai', result['answer'])
+        self.assertEqual(call.remaining, [])
+        # The new draft is checked like the first: an invented excerpt still ends in an abstention.
+        invented = dict(GOOD, extrait='Le consommateur dispose de trente jours pour changer d’avis sans motif.')
+        call = scripted(self.draft(weak), refused, self.draft(invented))
+        self.assertTrue(g.compose('q', SOURCES, call=call)['abstained'])
+        # One restart only, and none when the model itself wrote no claim.
+        call = scripted(self.draft(weak), refused, self.draft(weak), refused)
+        self.assertTrue(g.compose('q', SOURCES, call=call)['abstained'])
+        self.assertEqual(call.remaining, [])
+        call = scripted(self.draft())
+        self.assertTrue(g.compose('q', SOURCES, call=call)['abstained'])
+
     def test_second_reading_removes_a_claim_and_its_summary(self):
         other = {'titre': 'Amende', 'affirmation': 'L’amende est de 750 euros au plus.', 'source': 'S2',
                  'extrait': '750 euros au plus pour les contraventions de la 4e classe'}
