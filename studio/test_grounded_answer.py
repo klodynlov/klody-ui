@@ -59,6 +59,22 @@ class LiteralControls(unittest.TestCase):
                            [{'title': 'Livre', 'text': damaged}], 'ETF ?')
         self.assertIn('\ue01fdèlement', kept[0]['extrait'])
 
+    def test_sentences_copied_across_skipped_lines_are_shown_with_their_cuts(self):
+        page = ('La plus-value imposable est le gain réalisé en vendant un titre financier.\n'
+                'Ce gain est soumis à un prélèvement forfaitaire.\nVous pouvez opter pour le barème progressif.\n'
+                'Une moins-value se déduit des plus-values des dix années suivantes.')
+        copy = ('La plus-value imposable est le gain réalisé en vendant un titre financier. '
+                'Une moins-value se déduit des plus-values des dix années suivantes.')
+        self.assertEqual(g.locate(copy, page), 'La plus-value imposable est le gain réalisé en vendant un titre financier. […] '
+                         'Une moins-value se déduit des plus-values des dix années suivantes.')
+        invented = copy.replace('Une moins-value se déduit', 'Une moins-value ne se reporte jamais et se perd')
+        self.assertIsNone(g.locate(invented, page))
+        rules = ['Le dépôt est libre.', 'Un mineur peut ouvrir.', 'La banque informe le client.', 'Le retrait reste possible.', 'Aucun frais ne court.']
+        mosaic = ' '.join(rules)
+        spaced = ('\n' + 'Autre ligne longue et sans aucun rapport avec la règle voisine. ' * 4 + '\n').join(rules)
+        self.assertIsNotNone(g.locate(' '.join(rules[:4]), spaced))
+        self.assertIsNone(g.locate(mosaic, spaced))
+
     def test_a_figure_in_words_in_the_claim_is_controlled_too(self):
         claim = {**GOOD, 'affirmation': 'Le consommateur dispose de quinze jours pour se rétracter.'}
         self.assertEqual(g.verify([claim], SOURCES, 'q')[0], [])
@@ -120,6 +136,17 @@ class Composition(unittest.TestCase):
                      '- [1] Code de la consommation · article L221-18'):
             self.assertIn(part, result['answer'])
         self.assertNotIn('Code pénal', result['answer'])
+
+    def test_money_figure_from_an_undated_source_carries_its_warning_and_a_notion_does_not(self):
+        sources = [{'title': 'Manuel', 'text': 'Les gains sont imposables au taux de 18 %. Une action est un titre de propriété.',
+                    'figure_caution': 'Chiffre non daté.'}]
+        points = [{'titre': '', 'affirmation': 'Les gains sont imposés à 18 %.', 'extrait': 'Les gains sont imposables au taux de 18 %.', 'source_index': 0},
+                  {'titre': '', 'affirmation': 'Une action est un titre de propriété.', 'extrait': 'Une action est un titre de propriété.', 'source_index': 0}]
+        text, _ = g.render(points, sources, '', '')
+        self.assertEqual(text.count('⚠ Chiffre non daté.'), 1)
+        self.assertLess(text.index('⚠'), text.index('2. '))
+        del sources[0]['figure_caution']
+        self.assertNotIn('⚠', g.render(points, sources, '', '')[0])
 
     def test_no_supported_claim_is_an_abstention_not_prose(self):
         invented = {**GOOD, 'extrait': 'Texte qui ne figure dans aucune source fournie ici.'}
@@ -264,6 +291,39 @@ class Transport(unittest.TestCase):
             self.assertEqual(g.llm('s', {}, post=lambda *a, **k: replies.pop(0)), {'ok': True})
         finally:
             time.sleep = original
+
+    def test_unreachable_gateway_is_retried_then_reported_never_a_traceback(self):
+        import time
+        import requests
+        original = time.sleep
+        time.sleep = lambda s: None
+        try:
+            attempts = []
+
+            def down(*a, **k):
+                attempts.append(k['timeout'])
+                raise requests.ConnectTimeout('connect timeout')
+            with self.assertRaises(g.LLMError) as error:
+                g.llm('s', {}, post=down)
+            self.assertEqual(len(attempts), 3)
+            self.assertIn('ne répond pas', str(error.exception))
+            replies = [requests.ConnectionError('refused'), self.Reply(200, '{"ok": 1}')]
+
+            def flaky(*a, **k):
+                reply = replies.pop(0)
+                if isinstance(reply, Exception):
+                    raise reply
+                return reply
+            self.assertEqual(g.llm('s', {}, post=flaky), {'ok': 1})
+            # The whole answer path degrades to a message, as for any model failure.
+            result = g.compose('q', SOURCES, call=lambda *a, **k: g.llm('s', {}, post=down))
+            self.assertTrue(result['failed'])
+        finally:
+            time.sleep = original
+
+    def test_http_error_is_a_message_not_an_exception_from_the_transport(self):
+        with self.assertRaisesRegex(g.LLMError, 'HTTP 500'):
+            g.llm('s', {}, post=lambda *a, **k: self.Reply(500))
 
     def test_cut_or_malformed_object_is_asked_again_with_more_room(self):
         sizes = []

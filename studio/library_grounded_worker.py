@@ -12,6 +12,7 @@ import subprocess
 import sys
 import time
 import grounded_answer as grounded
+import public_guides
 from models import MODELS
 
 RULES = '''- "recherches" : une requête en français ET une requête en anglais (la bibliothèque est bilingue), avec la terminologie standard du domaine.
@@ -19,7 +20,14 @@ RULES = '''- "recherches" : une requête en français ET une requête en anglais
 COMPOSE_RULES = '''- Rapporte ce que les ouvrages énoncent (méthode, définition, étapes, mise en garde). Distingue une méthode proposée par un auteur d'un fait établi.
 - N'invente aucun chiffre propre à l'utilisateur, aucun rendement garanti, aucun taux légal ou fiscal actuel. Ne recommande aucun placement ni produit financier particulier : décris les notions et les critères que les sources donnent.
 - Si la question demande une marche à suivre, ordonne les points comme des étapes.
+- Une fiche officielle (Service-Public.gouv.fr) énonce la règle française à sa date de mise à jour : préfère-la à un ouvrage pour un plafond, un taux, une condition ou une imposition, et donne sa date quand un chiffre en dépend.
 '''
+PICK_RULE = '''- Ajoute à l'objet "choix_personnel" : true si la question demande de désigner POUR l'utilisateur quel titre, quelle action, quelle cryptomonnaie ou quel produit précis acheter ou vendre, ou à quel moment (« quelle action acheter demain ? », « dois-je vendre mes bitcoins ? »). false pour une question de notion, de fonctionnement, de règle, de comparaison, ou pour une demande générale de pistes (« comment placer 1000 euros ? », « comment faire fructifier mon épargne ? ») : seul un titre nommément attendu ou un moment d'achat ou de vente rend true.
+'''
+PICK_REFUSAL = ('Ce modèle ne désigne aucun titre, placement ou moment d’achat : il n’a ni les cours, ni votre situation, et '
+                'aucune source ne peut établir ce qui montera. Il peut en revanche expliquer, sources à l’appui, une notion '
+                '(action, ETF, PEA, risque, diversification, fiscalité).')
+UNDATED = 'Chiffre tiré d’un ouvrage, non daté ici : un taux, un plafond ou un montant légal peut avoir changé depuis.'
 HINT = 'précisez le sujet, le contexte (activité, objectif, horizon) ou le titre d’un ouvrage.'
 
 
@@ -42,7 +50,18 @@ def retrieve(plan, category, folder, here):
     return json.loads(result.stdout)
 
 
-def run(job, save, folder, call=grounded.llm, search=retrieve):
+def official_sheets(spec, plan):
+    """Passages of the activated official sheets for this specialist, if it reads any."""
+    if not spec.get('public_guides'):
+        return []
+    edition = public_guides.active(Path.home() / 'Projets' / spec['project'])
+    if edition is None:
+        return []
+    # French queries only: the sheets are in French and English keywords add noise.
+    return public_guides.search([plan['question'], *plan['recherches']], edition, limit=6)
+
+
+def run(job, save, folder, call=grounded.llm, search=retrieve, sheets=official_sheets):
     spec = MODELS[job['model']]
     if job.get('version'):
         raise ValueError('Les réponses structurées utilisent le profil publié, pas une version candidate.')
@@ -52,10 +71,13 @@ def run(job, save, folder, call=grounded.llm, search=retrieve):
             'profile': spec['name'] + ' · réponses structurées vérifiées', 'parameters': '35B',
             'history_policy': 'conversation_resolved'}
     save(data)
-    plan = grounded.resolve(job['question'], job.get('history', []), spec['scope'], RULES, call=call)
+    plan = grounded.resolve(job['question'], job.get('history', []), spec['scope'],
+                            RULES + (PICK_RULE if spec.get('no_personal_pick') else ''), call=call)
     data.update(resolved_question=plan['question'], search_queries=plan['recherches'], phase='retrieval')
     save(data)
     reason = grounded.refusal(plan, 'Cette question ne relève pas du domaine de ce modèle : ' + spec['description'])
+    if not reason and spec.get('no_personal_pick') and plan.get('choix_personnel') is True:
+        reason = PICK_REFUSAL
     if reason:
         data.update(answer=grounded.abstention(reason, (), HINT), phase='done', abstained=True,
                     confidence={'level': 'insufficient'}, audit_notice='Aucune recherche effectuée.',
@@ -68,8 +90,15 @@ def run(job, save, folder, call=grounded.llm, search=retrieve):
     sources = context['sources'] if context['accepted_sources'] else []
     for source in sources:
         source['reference'] = reference(source)
-    data.update(sources=context['sources'], confidence=context['confidence'], phase='generation',
-                source_status='accepted' if sources else 'candidates')
+        if spec.get('public_guides'):
+            # Seen 2026-11-15: a 2008 handbook's « 18 %, seuil 25 730 € » given as today's tax rule.
+            source['figure_caution'] = UNDATED
+    # Dated official sheets come first: for a rule (ceiling, rate, tax) they are
+    # the current French reference, where a book may be older or foreign.
+    guides = sheets(spec, plan)
+    sources = guides + sources
+    data.update(sources=sources or context['sources'], confidence=context['confidence'], phase='generation',
+                source_status='accepted' if sources else 'candidates', official_sheets=len(guides))
     save(data)
     if not sources:
         missing = ('Des ouvrages liés ont été repérés, mais aucun passage n’atteint le seuil de pertinence pour répondre.'
