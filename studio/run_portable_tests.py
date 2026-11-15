@@ -29,7 +29,8 @@ def main():
     reader.llm=unavailable
     reader.answer=unavailable
     modules=['test_server','test_code_context','test_models','test_query_plan','test_legal_corpus',
-             'test_medical_translation','test_medical_french_default']
+             'test_medical_translation','test_medical_french_default',
+             'test_grounded_answer','test_grounded_workers']
     with patch.dict(sys.modules,{'medical_v8':reader}):
         suite=unittest.defaultTestLoader.loadTestsFromNames(modules)
         result=unittest.TextTestRunner(verbosity=2).run(suite)
