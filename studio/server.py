@@ -70,7 +70,8 @@ def model_info(model):
     code_metrics = read(root / 'reports/code_comparison.json', {})
     selection = read(root / 'reports/release_selection.json', {})
     return {'id': model, 'name': spec['name'], 'description': spec['description'], 'domains': spec['domains'],
-        'version': 'v0.1', 'parameters': '4B', 'available': bool(manifest), 'size_gb': round(manifest.get('weights_bytes', 0)/1e9, 2),
+        # A specialist answered by the checked-answer engine is written by the local 35B.
+        'version': 'v0.1', 'parameters': '35B' if spec.get('worker') == 'library_grounded_worker.py' else '4B', 'available': bool(manifest), 'size_gb': round(manifest.get('weights_bytes', 0)/1e9, 2),
         'category': spec['category'], 'dataset': dataset.get('counts', {}), 'metrics': scores,
         'code_metrics': code_metrics, 'validation_gate': selection.get('meets_baseline_gate'),
         'fidelity': read(root / 'reports/grounding_summary.json', {}), 'experimental': True, 'evaluated': bool(comparison) and (model != 'code' or bool(code_metrics)), 'preparation': read(root / 'runs/status.json', {})}

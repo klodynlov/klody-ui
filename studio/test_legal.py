@@ -17,7 +17,8 @@ class LegalIntegrationTests(unittest.TestCase):
     def test_catalog_uses_legal_profile_and_distinct_review_metrics(self):
         info = server.model_info('legal')
         self.assertTrue(info['available'], info)
-        self.assertEqual(info['version'], 'v3')
+        self.assertEqual((info['name'], info['version'], info['parameters']), ('Juridique', 'v4', '35B'))
+        self.assertIsNone(info['validation_gate'])
         self.assertFalse(info['validation_gate'])
         self.assertFalse(info['supports_training'])
         self.assertEqual(info['metrics'], {})

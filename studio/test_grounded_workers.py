@@ -151,6 +151,12 @@ class LibraryRun(unittest.TestCase):
             self.assertIn(shelf, MODELS['business']['category'])
         self.assertNotIn('Musique', MODELS['business']['category'])
 
+    def test_catalog_names_the_model_that_actually_writes(self):
+        import server
+        self.assertEqual(server.model_info('business')['parameters'], '35B')
+        self.assertEqual(server.model_info('research')['parameters'], '4B')
+        self.assertEqual(MODELS['legal']['name'], 'Juridique')
+
     def test_passages_below_the_relevance_gate_never_reach_the_model(self):
         context = {'sources': [self.SOURCE], 'accepted_sources': 0, 'confidence': {'level': 'insufficient'}}
         result = self.run_job(context, scripted({'question': 'Qu’est-ce qu’une obligation ?', 'recherches': ['obligation']}))
