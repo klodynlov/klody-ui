@@ -60,6 +60,34 @@ test.describe("chat flow", () => {
     await emitWs(page, { type: "done" });
   });
 
+  test("tableau Markdown (GFM) rendu en vrai tableau, pas en texte brut", async ({ page }) => {
+    const textarea = page.getByPlaceholder(/Message…/);
+    await textarea.fill("Sanctions pour excès de vitesse ?");
+    await textarea.press("Enter");
+
+    // Réponse réelle de Klody du 20/11/2026 qui s'affichait en « | … | » brut.
+    await emitWs(page, { type: "thinking" });
+    await emitWs(page, {
+      type: "token",
+      content:
+        "**Sanctions (excès de vitesse)**\n\n" +
+        "| Excès | Amende | Points retirés |\n" +
+        "|---|---|---|\n" +
+        "| < 5 km/h | 68 € (3e cl.) | 0 |\n" +
+        "| 30–39 km/h | 135 € (4e cl.) | 3 + risque suspension |\n",
+    });
+    await emitWs(page, { type: "stream_end" });
+
+    const table = page.locator("table").filter({ hasText: "Points retirés" });
+    await expect(table).toBeVisible();
+    await expect(table.locator("th")).toHaveText(["Excès", "Amende", "Points retirés"]);
+    await expect(table.locator("tbody tr")).toHaveCount(2);
+    await expect(table.locator("tbody tr").nth(1).locator("td").nth(2)).toHaveText("3 + risque suspension");
+    // Plus aucune ligne de séparation affichée en texte
+    await expect(page.getByText("|---|")).toHaveCount(0);
+    await emitWs(page, { type: "done" });
+  });
+
   test("tool_call write_file + tool_result rendus", async ({ page }) => {
     const textarea = page.getByPlaceholder(/Message…/);
     await textarea.fill("Crée hello.py");

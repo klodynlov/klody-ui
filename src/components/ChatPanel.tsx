@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { QuestionCard } from "./QuestionCard";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { ChatMessage, AgentStatus, SessionSummary } from "../hooks/useAgent";
 import { alpha, colors, radii, shadows, fonts } from "../theme";
 import { highlightToLines, colorOf, isComment } from "../syntax";
@@ -156,6 +157,20 @@ const MD_COMPONENTS: Components = {
     </blockquote>
   ),
   hr: () => <hr style={{ border: "none", borderTop: `1px solid ${colors.border}`, margin: "12px 0" }} />,
+  // Tableaux GFM (remark-gfm) : défilement horizontal plutôt que débordement.
+  table: ({ children }) => (
+    <div style={{ overflowX: "auto", margin: "8px 0" }}>
+      <table style={{ borderCollapse: "collapse", fontSize: "13px", lineHeight: 1.5 }}>{children}</table>
+    </div>
+  ),
+  th: ({ children, style }) => (
+    <th style={{ ...style, border: `1px solid ${colors.border}`, background: colors.bgMuted, color: colors.text, fontWeight: 600, padding: "6px 10px", textAlign: style?.textAlign ?? "left" }}>
+      {children}
+    </th>
+  ),
+  td: ({ children, style }) => (
+    <td style={{ ...style, border: `1px solid ${colors.border}`, padding: "6px 10px", verticalAlign: "top" }}>{children}</td>
+  ),
   a: ({ href, children }) => (
     <a href={href} style={{ color: colors.primary, textDecoration: "underline" }} target="_blank" rel="noopener noreferrer">
       {children}
@@ -176,7 +191,7 @@ function MessageContent({ text, streaming, isUser }: { text: string; streaming?:
 
   return (
     <div className={streaming ? "cursor-blink" : ""} style={{ wordBreak: "break-word" }}>
-      <ReactMarkdown components={MD_COMPONENTS}>{text}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>{text}</ReactMarkdown>
     </div>
   );
 }
